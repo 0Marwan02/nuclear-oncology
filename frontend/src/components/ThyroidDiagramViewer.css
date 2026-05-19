@@ -1,0 +1,74 @@
+.thyroid-viewer-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface-card, #ffffff);
+  border-radius: 10px;
+  border: 1px solid var(--border-light, #e5e7eb);
+  overflow: hidden;
+}
+
+.thyroid-viewer-svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.viewer-lobe-label {
+  font-size: 11px;
+  fill: var(--text-base, #1f2937);
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.viewer-uptake-value {
+  font-size: 13px;
+  fill: var(--text-base, #1f2937);
+  font-weight: 700;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.viewer-isthmus-label {
+  font-size: 9px;
+  fill: var(--text-muted, #6b7280);
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.viewer-total-label {
+  font-size: 10px;
+  fill: var(--text-secondary, #4b5563);
+  font-weight: 600;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.viewer-pattern-label {
+  font-size: 9px;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.viewer-summary {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.viewer-tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.viewer-tag.position {
+  background: #dcfce7;
+  color: #15803d;
+}

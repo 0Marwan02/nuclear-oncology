@@ -1,0 +1,329 @@
+.thyroid-diagram-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface-card, #ffffff);
+  border-radius: 14px;
+  border: 1px solid var(--border-light, #e5e7eb);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.1));
+}
+
+.thyroid-svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.lobe-clickable {
+  transition: opacity 0.2s, filter 0.2s;
+}
+
+.lobe-clickable:hover {
+  opacity: 0.85;
+  filter: brightness(1.1);
+}
+
+.lobe-label {
+  font-size: 13px;
+  fill: var(--text-base, #1f2937);
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.uptake-value {
+  font-size: 16px;
+  fill: var(--text-base, #1f2937);
+  font-weight: 700;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.size-label {
+  font-size: 11px;
+  fill: var(--text-muted, #6b7280);
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.isthmus-label {
+  font-size: 11px;
+  fill: var(--text-muted, #6b7280);
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.position-label {
+  font-size: 12px;
+  fill: var(--text-secondary, #4b5563);
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.total-uptake-label {
+  font-size: 13px;
+  fill: var(--text-base, #1f2937);
+  font-weight: 600;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.pattern-label {
+  font-size: 11px;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.pattern-label.diffuse {
+  fill: #22c55e;
+}
+
+.pattern-label.heterogenous {
+  fill: #f97316;
+}
+
+.nodule-glow {
+  animation: nodulePulse 2s ease-in-out infinite;
+}
+
+.nodule-label {
+  pointer-events: none;
+  font-family: inherit;
+}
+
+.remove-btn {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.remove-btn:hover {
+  font-weight: bold;
+}
+
+.add-nodule-btn {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.add-nodule-btn:hover {
+  transform: scale(1.2);
+}
+
+@keyframes nodulePulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+.thyroid-legend {
+  width: 100%;
+  max-width: 360px;
+  padding: 12px 16px;
+  background: var(--surface-bg, #f9fafb);
+  border-radius: 10px;
+  border: 1px solid var(--border-light, #e5e7eb);
+}
+
+.legend-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.legend-items {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary, #4b5563);
+}
+
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.thyroid-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.thyroid-modal {
+  background: var(--surface-card, #ffffff);
+  border-radius: 14px;
+  padding: 24px;
+  width: 90%;
+  max-width: 380px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.2s ease;
+}
+
+.thyroid-modal h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-base, #1f2937);
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #4b5563);
+}
+
+.modal-field input[type="number"],
+.modal-field input[type="text"] {
+  padding: 8px 12px;
+  border: 1.5px solid var(--border-light, #e5e7eb);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  background: white;
+}
+
+.modal-field input:focus {
+  outline: none;
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+.nodule-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-nodule {
+  padding: 6px 12px;
+  border: 1.5px solid;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.btn-nodule.hot {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.btn-nodule.hot:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-nodule.cold {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.btn-nodule.cold:hover {
+  background: #3b82f6;
+  color: white;
+}
+
+.modal-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary, #4b5563);
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #16a34a;
+  cursor: pointer;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.btn-close {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #16a34a;
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+
+.btn-close:hover {
+  background: #15803d;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 480px) {
+  .thyroid-diagram-container {
+    padding: 12px;
+  }
+
+  .thyroid-modal {
+    padding: 16px;
+    width: 95%;
+  }
+}

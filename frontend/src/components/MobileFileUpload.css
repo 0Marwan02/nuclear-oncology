@@ -1,0 +1,48 @@
+.mobile-file-upload {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+}
+
+.mobile-file-upload .upload-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.upload-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  min-height: 48px;
+}
+
+.upload-btn.camera {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.file-list {
+  margin: 0.5rem 0 0;
+  padding-right: 1.25rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}

@@ -1,0 +1,81 @@
+### Base variables (edit if needed)
+@baseUrl = http://localhost:5000/api
+@hospitalId = D-1001
+@password = 123456
+@token =
+@patientId =
+@caseId =
+
+### 1) Register doctor
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "hospitalId": "{{hospitalId}}",
+  "name": "Dr Demo",
+  "role": "doctor",
+  "password": "{{password}}"
+}
+
+### 2) Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "hospitalId": "{{hospitalId}}",
+  "password": "{{password}}"
+}
+
+### Copy token from login response manually to @token before next requests
+
+### 3) Create patient (doctor can include medicalCase)
+POST {{baseUrl}}/patients
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nationalId": "29901010123456",
+  "name": "Patient Demo",
+  "gender": "male",
+  "birthDate": "1999-01-01",
+  "phone": "01000000000",
+  "address": "Assiut",
+  "bloodType": "O+",
+  "medicalCase": {
+    "diagnosis": "Thyroid carcinoma",
+    "cancerType": "Thyroid",
+    "cancerStage": "II",
+    "protocolType": "I-131",
+    "startDate": "2026-04-15",
+    "status": "active"
+  }
+}
+
+### Copy patient.id to @patientId and medicalCase.id to @caseId
+
+### 4) Create visit
+POST {{baseUrl}}/visits
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "patientId": "{{patientId}}",
+  "caseId": "{{caseId}}",
+  "weight": 76,
+  "bloodPressure": "120/80",
+  "temperature": 36.8,
+  "generalCondition": "good",
+  "doctorNotes": "Follow-up after protocol dose"
+}
+
+### 5) Get all patients (search optional)
+GET {{baseUrl}}/patients
+Authorization: Bearer {{token}}
+
+### 6) Get patient details
+GET {{baseUrl}}/patients/{{patientId}}
+Authorization: Bearer {{token}}
+
+### 7) Get patient visits timeline data
+GET {{baseUrl}}/visits/patient/{{patientId}}
+Authorization: Bearer {{token}}

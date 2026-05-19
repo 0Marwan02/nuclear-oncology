@@ -1,0 +1,267 @@
+.layout-container {
+  display: flex;
+  min-height: 100vh;
+  background: #f4f6fb;
+}
+
+.sidebar {
+  width: 260px;
+  background: #ffffff;
+  border-right: 1px solid #dde3ef;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 24px rgba(17, 24, 39, 0.04);
+}
+
+.sidebar-brand {
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.sidebar-brand h2 {
+  margin: 0;
+  font-size: 22px;
+  color: #1a1b1f;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.role-badge {
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  color: #4b5563;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.nav-item.active {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.nav-item.active svg {
+  color: #2563eb;
+}
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.logout-btn:hover {
+  background: #fecaca;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.main-header {
+  background: #ffffff;
+  padding: 20px 32px;
+  border-bottom: 1px solid #dde3ef;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.main-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.main-header h1 {
+  margin: 0;
+  font-size: 20px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.header-search-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.header-search-hint:hover {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.header-kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #6b7280;
+  font-family: inherit;
+}
+
+.content-area {
+  padding: 32px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Submenu styles */
+.nav-submenu {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-submenu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  color: #4b5563;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  background: none;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.nav-submenu-toggle:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.nav-submenu-toggle.open {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.nav-submenu-toggle.open svg:first-child {
+  color: #2563eb;
+}
+
+.nav-submenu-toggle .lucide-chevron-right,
+.nav-submenu-toggle .lucide-chevron-down {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.submenu-items {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.submenu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  color: #6b7280;
+  text-decoration: none;
+  font-weight: 400;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.submenu-item:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.submenu-item.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.submenu-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.green-dot {
+  background: #16a34a;
+}
+
+.red-dot {
+  background: #dc2626;
+}

@@ -1,0 +1,35 @@
+.workflow-progress {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+
+.wf-step {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #64748b);
+}
+
+.wf-step.done .wf-dot {
+  background: #16a34a;
+  color: #fff;
+}
+
+.wf-step.active .wf-dot {
+  background: #2563eb;
+  color: #fff;
+}
+
+.wf-dot {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  background: #e2e8f0;
+}

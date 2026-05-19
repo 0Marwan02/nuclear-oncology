@@ -1,0 +1,50 @@
+.encounter-wizard-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.encounter-wizard-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: min(480px, 92vw);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.encounter-wizard-card .form-group {
+  margin-bottom: 1rem;
+}
+
+.encounter-wizard-card label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.encounter-wizard-card input,
+.encounter-wizard-card select {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.wizard-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.error-banner {
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+}

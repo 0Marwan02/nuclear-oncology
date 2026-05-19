@@ -1,0 +1,80 @@
+.patient-history {
+  padding: 1.5rem;
+  background: var(--white);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.patient-history h2 {
+  margin-bottom: 1.5rem;
+  color: var(--gray-800);
+}
+
+.patient-history .tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--gray-200);
+  padding-bottom: 0.5rem;
+}
+
+.patient-history .tab {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--gray-600);
+  border-bottom: 2px solid transparent;
+}
+
+.patient-history .tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.tab-content {
+  margin-top: 1rem;
+}
+
+.overview-tab {
+  padding: 1rem;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.summary-cards .card {
+  background: var(--gray-50);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--gray-200);
+}
+
+.summary-cards .card h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--gray-600);
+  font-size: 0.9rem;
+}
+
+.summary-cards .card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 2rem;
+  color: var(--primary);
+}
+
+.error-message {
+  padding: 1rem;
+  background: var(--danger-light);
+  color: var(--danger);
+  border-radius: 4px;
+}

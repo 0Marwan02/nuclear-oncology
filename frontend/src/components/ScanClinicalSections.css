@@ -1,0 +1,83 @@
+.scan-clinical-sections {
+  margin: 1rem 0;
+}
+
+.clinical-section {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.clinical-section.doctor-section {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.clinical-section.nurse-section {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.clinical-section.tech-section {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.clinical-section h4 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.scan-clinical-sections .form-row-2,
+.scan-clinical-sections .form-row-3 {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.scan-clinical-sections .form-row-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.scan-clinical-sections .form-row-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 768px) {
+  .scan-clinical-sections .form-row-2,
+  .scan-clinical-sections .form-row-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scan-clinical-sections .form-group {
+  margin-bottom: 0.5rem;
+}
+
+.scan-clinical-sections label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.scan-clinical-sections input,
+.scan-clinical-sections select,
+.scan-clinical-sections textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.scan-clinical-sections .touch-input {
+  min-height: 48px;
+  font-size: 1.1rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
