@@ -179,7 +179,7 @@ const ScanRenal = () => {
         corticalScarring: formData.corticalScarring,
         impression: formData.impression,
         physicianNotes: formData.physicianNotes,
-        workflowStatus: 'Registered',
+        workflowStatus: 'Assessed',
       });
 
       await createScan('renal', payload);

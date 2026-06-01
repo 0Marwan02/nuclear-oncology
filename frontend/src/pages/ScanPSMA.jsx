@@ -156,7 +156,7 @@ const ScanPSMA = () => {
         psmaExpression: formData.psmaExpression,
         impression: formData.impression,
         physicianNotes: formData.physicianNotes,
-        workflowStatus: 'Registered',
+        workflowStatus: 'Assessed',
       });
 
       await createScan('psma', payload);

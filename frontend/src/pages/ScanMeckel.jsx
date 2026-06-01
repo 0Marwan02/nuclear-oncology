@@ -53,7 +53,7 @@ const ScanMeckel = () => {
         uptakeLocation: formData.uptakeLocation,
         impression: formData.impression,
         physicianNotes: formData.physicianNotes,
-        workflowStatus: 'Registered',
+        workflowStatus: 'Assessed',
       });
       await createScan('meckel', payload);
       setSuccess('تم حفظ فحص Meckel بنجاح');

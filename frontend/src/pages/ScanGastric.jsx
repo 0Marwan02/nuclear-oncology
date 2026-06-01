@@ -169,7 +169,7 @@ const ScanGastric = () => {
         aspirationSign: formData.aspirationSign,
         impression: formData.impression,
         physicianNotes: formData.physicianNotes,
-        workflowStatus: 'Registered',
+        workflowStatus: 'Assessed',
       });
 
       await createScan('gastric', payload);

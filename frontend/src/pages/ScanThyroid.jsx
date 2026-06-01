@@ -222,7 +222,7 @@ const ScanThyroid = () => {
         impression: formData.impression,
         physicianNotes: formData.physicianNotes,
         diagramData: diagramDataObj ? JSON.stringify(diagramDataObj) : null,
-        workflowStatus: 'Registered',
+        workflowStatus: 'Assessed',
       });
 
       await createScan('thyroid', payload);

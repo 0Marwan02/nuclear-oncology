@@ -155,7 +155,7 @@ const ScanBone = () => {
         traumaSites: formData.traumaSites,
         impression: formData.impression,
         physicianNotes: formData.physicianNotes,
-        workflowStatus: 'Registered',
+        workflowStatus: 'Assessed',
       });
 
       await createScan('bone', payload);

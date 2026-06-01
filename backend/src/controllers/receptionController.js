@@ -1,20 +1,19 @@
 const prisma = require('../prisma');
+const { emitQueue } = require('../realtime');
 
-const SCAN_MODEL = {
-  petct: 'scanPETCT',
-  psma: 'scanPSMAPETCT',
-  thyroid: 'scanThyroid',
-  bone: 'scanBone',
-  renal: 'scanRenal',
-  gastric: 'scanGastric',
-  meckel: 'scanMeckel',
-};
-
+/**
+ * Reception opens a new encounter (المحطة الأولى). Reception has no diagnosis
+ * access and does NOT choose the scan sheet — it only registers the patient and
+ * pushes them to the physician's assessment queue as a Visit (Registered).
+ *
+ * The clinic paths (green/red) remain a separate continuous-care track and are
+ * created directly here when reception is explicitly routing a follow-up.
+ */
 const openEncounter = async (req, res) => {
-  const { patientId, encounterType, scanSubtype, referralReason, diagnosis, isotopeType, renalScanType } = req.body;
+  const { patientId, encounterType, referralReason, diagnosis } = req.body;
 
-  if (!patientId || !encounterType) {
-    return res.status(400).json({ message: 'patientId and encounterType are required' });
+  if (!patientId) {
+    return res.status(400).json({ message: 'patientId is required' });
   }
 
   try {
@@ -30,6 +29,7 @@ const openEncounter = async (req, res) => {
           createdBy: req.user.id,
         },
       });
+      emitQueue('physician', { event: 'clinic_opened', record: { ...record, type: 'clinic_green' } });
       return res.status(201).json({ type: 'clinic_green', record });
     }
 
@@ -43,32 +43,36 @@ const openEncounter = async (req, res) => {
           createdBy: req.user.id,
         },
       });
+      emitQueue('physician', { event: 'clinic_opened', record: { ...record, type: 'clinic_red' } });
       return res.status(201).json({ type: 'clinic_red', record });
     }
 
-    if (encounterType === 'scan') {
-      const scanKey = scanSubtype || 'petct';
-      const modelName = SCAN_MODEL[scanKey];
-      if (!modelName) {
-        return res.status(400).json({ message: `Invalid scanSubtype. Allowed: ${Object.keys(SCAN_MODEL).join(', ')}` });
-      }
-
-      const baseData = {
+    // Default + 'scan': create a Visit encounter awaiting physician assessment.
+    const visit = await prisma.visit.create({
+      data: {
         patientId,
-        referralReason: referralReason || null,
-        diagnosis: diagnosis || null,
+        visitDate: new Date(),
+        doctorNotes: referralReason || null,
         workflowStatus: 'Registered',
-        performedBy: req.user.id,
-      };
+        recordedBy: req.user.id,
+      },
+      include: {
+        patient: { select: { id: true, name: true, nationalId: true, gender: true, birthDate: true, phone: true } },
+      },
+    });
 
-      if (scanKey === 'thyroid') baseData.isotopeType = isotopeType || 'Tc-99m';
-      if (scanKey === 'renal') baseData.scanType = renalScanType || 'DTPA';
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        tableName: 'Visit',
+        recordId: visit.id,
+        action: 'INSERT',
+        newValues: JSON.stringify({ patientId, workflowStatus: 'Registered', referralReason: referralReason || null }),
+      },
+    });
 
-      const record = await prisma[modelName].create({ data: baseData });
-      return res.status(201).json({ type: scanKey, record });
-    }
-
-    return res.status(400).json({ message: 'encounterType must be clinic_green, clinic_red, or scan' });
+    emitQueue('physician', { event: 'encounter_opened', record: { ...visit, scanType: 'visit' } });
+    return res.status(201).json({ type: 'visit', record: visit });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

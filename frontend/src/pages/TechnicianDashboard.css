@@ -286,3 +286,11 @@
   border: 1px dashed var(--border-light);
   border-radius: 10px;
 }
+
+.prep-summary .safety-missing {
+  color: #b91c1c;
+  font-weight: 600;
+}
+.prep-summary .safety-ok {
+  color: #15803d;
+}

@@ -162,7 +162,7 @@ const ScanPETCT = () => {
         metastasisDetails: formData.metastasisDetails,
         impression: formData.impression,
         physicianNotes: formData.physicianNotes,
-        workflowStatus: 'Registered',
+        workflowStatus: 'Assessed',
       });
 
       await createScan('petct', payload);

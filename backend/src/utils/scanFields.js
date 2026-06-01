@@ -57,7 +57,8 @@ const parseValue = (key, val) => {
   }
   const floats = ['prepWeight', 'prepHeight', 'prepBloodGlucose', 'fdgDoseMCi', 'ga68DoseMCi',
     'isotopeDoseMCi', 'tc99mDoseMCi', 'bloodSugar', 'suvMax', 'suvMean', 'psaLevel', 'totalPSA', 'freePSA',
-    't3Level', 't4Level', 'tshLevel', 'thyroglobulin', 'halfEmptyingTime', 'retention1h', 'retention2h', 'retention4h'];
+    't3Level', 't4Level', 'tshLevel', 'thyroglobulin', 'halfEmptyingTime', 'retention1h', 'retention2h', 'retention4h',
+    'rightLobeUptake', 'leftLobeUptake', 'totalUptake'];
   if (floats.includes(key) && val !== null && val !== '') return parseFloat(val);
   return val;
 };
@@ -85,4 +86,4 @@ const filterBodyByRole = (body, role) => {
   return pickClinicalFields(body, roleKeys);
 };
 
-module.exports = { pickClinicalFields, filterBodyByRole, CLINICAL_PREP_FIELDS };
+module.exports = { pickClinicalFields, filterBodyByRole, CLINICAL_PREP_FIELDS, ROLE_WRITABLE };

@@ -1,11 +1,12 @@
 import './WorkflowProgress.css';
 
-const STEPS = ['Registered', 'Prepared', 'Scanned', 'Completed'];
+const STEPS = ['Registered', 'Assessed', 'Prepared', 'Scanned', 'Completed'];
 const LABELS = {
-  Registered: 'مسجّل',
-  Prepared: 'محضّر',
-  Scanned: 'مُصوَّر',
-  Completed: 'مكتمل',
+  Registered: 'استقبال',
+  Assessed: 'تقييم الطبيب',
+  Prepared: 'تحضير التمريض',
+  Scanned: 'التصوير',
+  Completed: 'التقرير',
 };
 
 const WorkflowProgress = ({ status = 'Registered' }) => {

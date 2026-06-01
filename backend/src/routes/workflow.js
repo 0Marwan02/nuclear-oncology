@@ -8,9 +8,11 @@ const {
   getRecordsByStatus,
   getAllByStatus,
   getPatientWorkflow,
+  getAssessmentQueue,
 } = require('../controllers/workflowController');
 
 router.get('/all', auth, getAllByStatus);
+router.get('/assessment-queue', auth, getAssessmentQueue);
 router.put('/:type/:id/advance', auth, roleFieldFilter, advanceWorkflow);
 router.put('/:type/:id/status', auth, updateWorkflowStatus);
 router.get('/patient/:patientId', auth, getPatientWorkflow);

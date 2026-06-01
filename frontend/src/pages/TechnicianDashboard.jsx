@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getWorkflowAll, advanceWorkflow } from '../utils/api';
+import { useQueueSocket } from '../utils/socket';
 import WorkflowProgress from '../components/WorkflowProgress';
 import { format as fmtDate } from 'date-fns';
 import { ClipboardList, ChevronDown, ChevronUp, Eye, BarChart3, CheckCircle, AlertCircle } from 'lucide-react';
@@ -28,20 +29,20 @@ const TechnicianDashboard = () => {
   const [scanForm, setScanForm] = useState({ dose: '', injectionTime: '', scanTime: '', notes: '' });
   const [successMsg, setSuccessMsg] = useState('');
 
-  useEffect(() => {
-    const fetchPrepared = async () => {
-      try {
-        const combined = await getWorkflowAll({ status: 'Prepared' });
-        combined.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-        setPreparedRecords(combined.map((r) => ({ ...r, _scanType: r.scanType })));
-      } catch (err) {
-        setError(err.message || 'فشل في تحميل البيانات');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPrepared();
+  const fetchPrepared = useCallback(async () => {
+    try {
+      const combined = await getWorkflowAll({ status: 'Prepared' });
+      combined.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      setPreparedRecords(combined.map((r) => ({ ...r, _scanType: r.scanType })));
+    } catch (err) {
+      setError(err.message || 'فشل في تحميل البيانات');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { fetchPrepared(); }, [fetchPrepared]);
+  useQueueSocket(fetchPrepared);
 
   const filteredRecords = selectedType === 'all' ? preparedRecords : preparedRecords.filter(r => r._scanType === selectedType);
 
@@ -122,7 +123,9 @@ const TechnicianDashboard = () => {
             const patient = record.patient || {};
             const diagnosis = record.referralReason || record.diagnosis || record.case?.diagnosis || '';
             const prepWeight = record.weight || record.prepWeight || '—';
-            const prepSugar = record.bloodSugar || record.prepBloodSugar || '—';
+            const prepSugar = record.prepBloodGlucose || record.bloodSugar || record.prepBloodSugar || '—';
+            const isFemale = record.patient?.gender === 'Female' || record.patient?.gender === 'أنثى';
+            const contraception = record.pregnancyStatus;
 
             return (
               <div key={record.id} className={`record-card ${expandedId === record.id ? 'expanded' : ''}`}>
@@ -142,6 +145,11 @@ const TechnicianDashboard = () => {
                 <div className="prep-summary">
                   <span><strong>الوزن:</strong> {prepWeight} كجم</span>
                   <span><strong>السكر:</strong> {prepSugar} mg/dL</span>
+                  {isFemale && (
+                    <span className={contraception ? 'safety-ok' : 'safety-missing'}>
+                      <strong>منع الحمل:</strong> {contraception || 'غير مسجّل ⚠'}
+                    </span>
+                  )}
                 </div>
 
                 {expandedId === record.id && (

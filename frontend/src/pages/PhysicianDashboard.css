@@ -348,3 +348,15 @@
   border: 1px dashed var(--border-light);
   border-radius: 10px;
 }
+
+.queue-section {
+  margin-top: 1.5rem;
+}
+.queue-section .queue-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.05rem;
+  color: #1f2937;
+}

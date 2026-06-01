@@ -107,6 +107,10 @@ export const getPatientWorkflow = (patientId) => {
   return apiFetch(`/workflow/patient/${patientId}`);
 };
 
+export const getAssessmentQueue = () => {
+  return apiFetch('/workflow/assessment-queue');
+};
+
 export const searchPatients = (query) => {
   return apiFetch(`/patients?q=${encodeURIComponent(query)}`);
 };
