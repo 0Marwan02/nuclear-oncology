@@ -133,27 +133,63 @@ const ComparisonModal = ({ currentData, previousScan, scanType, onClose }) => {
   );
 };
 
+const KEY_FIELDS = {
+  petct:   ['impression', 'suvMax', 'suvMean', 'lesionLocation', 'metastasisSign', 'fdgDoseMCi'],
+  psma:    ['impression', 'psmaExpression', 'psaLevel', 'boneMetastasis', 'ga68DoseMCi'],
+  thyroid: ['impression', 'totalUptake', 'rightLobeUptake', 'leftLobeUptake', 'tshLevel', 'isotopeDoseMCi'],
+  bone:    ['impression', 'skeletalMetastasis', 'metastasisLocations', 'tc99mDoseMCi'],
+  renal:   ['impression', 'rightKidneyGFR', 'leftKidneyGFR', 'rightSplitFunction', 'leftSplitFunction'],
+  gastric: ['impression', 'halfEmptyingTime', 'retention1h', 'retention2h', 'retention4h'],
+  meckel:  ['impression', 'ectopicUptake', 'uptakeLocation'],
+};
+
+const ScanCard = ({ scan, label, rank }) => {
+  const [expanded, setExpanded] = useState(false);
+  const fields = KEY_FIELDS[scan.type || ''] || ['impression'];
+  const date = scan.createdAt ? new Date(scan.createdAt).toLocaleDateString('ar-EG') : '—';
+
+  return (
+    <div className={`ehist-card ehist-card--${rank}`}>
+      <div className="ehist-card-header" onClick={() => setExpanded(e => !e)}>
+        <span className="ehist-rank-badge">{label}</span>
+        <span className="ehist-date"><Calendar size={13} /> {date}</span>
+        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      </div>
+      {scan.impression && (
+        <div className="ehist-impression">{scan.impression}</div>
+      )}
+      {expanded && (
+        <div className="ehist-fields">
+          {fields.filter(k => k !== 'impression').map(k => scan[k] != null ? (
+            <div key={k} className="ehist-field-row">
+              <span className="ehist-field-key">{k}</span>
+              <span className="ehist-field-val">
+                {typeof scan[k] === 'boolean' ? (scan[k] ? 'نعم' : 'لا') : String(scan[k])}
+              </span>
+            </div>
+          ) : null)}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const PreviousScanBanner = ({ patientId, scanType, currentScanData = {}, className = '' }) => {
-  const [previousScans, setPreviousScans] = useState([]);
+  const [lastTwo, setLastTwo] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showBanner, setShowBanner] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
-  const [latestScan, setLatestScan] = useState(null);
+  const [dismissed, setDismissed] = useState(false);
 
   const fetchHistory = useCallback(async () => {
     if (!patientId || !scanType) return;
     setLoading(true);
     try {
       const data = await getScanHistory(scanType, patientId);
-      const scans = data.scans || data || [];
-      if (scans.length > 0) {
-        const mostRecent = scans.sort(
-          (a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date)
-        )[0];
-        setPreviousScans(scans);
-        setLatestScan(mostRecent);
-        setShowBanner(true);
-      }
+      const scans = (data.scans || data || [])
+        .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
+        .slice(0, 2)
+        .map(s => ({ ...s, type: scanType }));
+      setLastTwo(scans);
     } catch (err) {
       console.error('Failed to fetch scan history:', err);
     } finally {
@@ -162,46 +198,46 @@ const PreviousScanBanner = ({ patientId, scanType, currentScanData = {}, classNa
   }, [patientId, scanType]);
 
   useEffect(() => {
+    setLastTwo([]);
+    setDismissed(false);
     fetchHistory();
   }, [fetchHistory]);
 
-  if (loading || !showBanner) return null;
+  if (loading) return <div className="ehist-loading">جاري تحميل السجل السابق…</div>;
+  if (lastTwo.length === 0 || dismissed) return null;
 
   const scanLabel = SCAN_TYPE_LABELS[scanType] || scanType;
 
   return (
     <>
-      <div className={`previous-scan-banner ${className}`}>
-        <div className="banner-content">
-          <AlertTriangle size={20} className="banner-icon" />
-          <div className="banner-text">
-            <strong>⚠️ تم العثور على {previousScans.length} فحص سابق لنوع {scanLabel}</strong>
-            <span className="banner-date">
-              آخر فحص: {latestScan?.createdAt ? new Date(latestScan.createdAt).toLocaleDateString('ar-EG') : '-'}
-            </span>
+      <div className={`ehist-panel ${className}`}>
+        <div className="ehist-header">
+          <div className="ehist-title">
+            <AlertTriangle size={16} className="ehist-icon" />
+            <span>السجل الإلكتروني (E-History) — آخر {lastTwo.length} فحص {scanLabel}</span>
           </div>
-          <div className="banner-actions">
-            <button
-              className="banner-compare-btn"
-              onClick={() => setShowComparison(true)}
-            >
-              <ArrowLeftRight size={16} />
-              مقارنة
-            </button>
-            <button
-              className="banner-dismiss-btn"
-              onClick={() => setShowBanner(false)}
-            >
-              <X size={16} />
+          <div className="ehist-actions">
+            {lastTwo.length >= 2 && (
+              <button className="ehist-compare-btn" onClick={() => setShowComparison(true)}>
+                <ArrowLeftRight size={14} /> مقارنة
+              </button>
+            )}
+            <button className="ehist-dismiss-btn" onClick={() => setDismissed(true)}>
+              <X size={14} />
             </button>
           </div>
         </div>
+        <div className="ehist-cards">
+          {lastTwo.map((scan, i) => (
+            <ScanCard key={scan.id || i} scan={scan} rank={i + 1} label={i === 0 ? 'الأحدث' : 'السابق'} />
+          ))}
+        </div>
       </div>
 
-      {showComparison && latestScan && (
+      {showComparison && lastTwo[0] && (
         <ComparisonModal
           currentData={currentScanData}
-          previousScan={latestScan}
+          previousScan={lastTwo[0]}
           scanType={scanType}
           onClose={() => setShowComparison(false)}
         />

@@ -1,51 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { apiFetch, getClinicHistory, getScanHistory } from '../utils/api';
+import { apiFetch, getScanHistory } from '../utils/api';
+import { useTranslation } from '../i18n/index';
 import './PatientProfile.css';
 import VisitsTimeline from '../components/VisitsTimeline';
 import VisitCreate from '../components/VisitCreate';
-import CaseCreate from '../components/CaseCreate';
-import { History, Calendar, FileText, Scan } from 'lucide-react';
+import { History, Scan, Clock } from 'lucide-react';
 
 const PatientProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showVisitForm, setShowVisitForm] = useState(false);
-  const [showCaseForm, setShowCaseForm] = useState(false);
-  const [miniTimeline, setMiniTimeline] = useState([]);
-  const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [scanHistory, setScanHistory] = useState([]);
+  const [scanHistoryLoading, setScanHistoryLoading] = useState(false);
+
+  useEffect(() => { fetchPatient(); }, [id]);
 
   useEffect(() => {
-    fetchPatient();
-  }, [id]);
-
-  useEffect(() => {
-    if (id) {
-      fetchMiniTimeline();
-    }
-  }, [id]);
-
-  const fetchMiniTimeline = async () => {
-    try {
-      setLoadingTimeline(true);
-      const [clinicData, scanData] = await Promise.all([
-        getClinicHistory('both', id),
-        getScanHistory('all', id)
-      ]);
-      const allRecords = [...clinicData.map(r => ({ ...r, recordType: 'clinic' })), ...scanData.map(r => ({ ...r, recordType: 'scan' }))]
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 5);
-      setMiniTimeline(allRecords);
-    } catch (err) {
-      console.error('Failed to load mini timeline:', err);
-    } finally {
-      setLoadingTimeline(false);
-    }
-  };
+    if (activeTab === 'scan_history' && id) fetchScanHistory();
+  }, [activeTab, id]);
 
   const fetchPatient = async () => {
     try {
@@ -58,21 +37,27 @@ const PatientProfile = () => {
     }
   };
 
-  const handleVisitCreated = (newVisit) => {
-    setShowVisitForm(false);
-    // Refresh to get updated timeline with full populated details (like lab results, if backend does that) or just append.
-    // Easiest is to re-fetch the patient profile completely.
-    fetchPatient();
+  const fetchScanHistory = async () => {
+    setScanHistoryLoading(true);
+    try {
+      const data = await getScanHistory('all', id);
+      setScanHistory(Array.isArray(data) ? data : data.records || []);
+    } catch (err) {
+      console.error(err);
+      setScanHistory([]);
+    } finally {
+      setScanHistoryLoading(false);
+    }
   };
 
-  const handleCaseCreated = (newCase) => {
-    setShowCaseForm(false);
-    fetchPatient();
-  };
-
-  if (loading) return <div className="profile-loading">Loading patient details...</div>;
+  if (loading) return <div className="profile-loading"><div className="spinner" /> {t('common.loading')}</div>;
   if (error) return <div className="profile-error">{error}</div>;
-  if (!patient) return <div className="profile-not-found">Patient not found</div>;
+  if (!patient) return <div className="profile-not-found">{t('patient.not_found')}</div>;
+
+  const TABS = [
+    { key: 'overview', label: t('patient.tabs.overview') },
+    { key: 'scan_history', label: t('patient.tabs.scan_history') },
+  ];
 
   return (
     <div className="patient-profile">
@@ -84,140 +69,131 @@ const PatientProfile = () => {
           <h2>{patient.name}</h2>
           <div className="tags">
             <span className="tag tag-blue">ID: {patient.nationalId}</span>
-            <span className="tag tag-purple">Blood: {patient.bloodType}</span>
+            <span className="tag tag-purple">{t('patient.blood_type')}: {patient.bloodType}</span>
+            {patient.patientType && (
+              <span className={`tag ${patient.patientType === 'tumor' ? 'tag-red' : 'tag-green'}`}>
+                {patient.patientType === 'tumor' ? 'Tumor' : 'Disease'}
+              </span>
+            )}
+            {patient.phone && <span className="tag tag-gray"><span role="img" aria-label="phone">📞</span> {patient.phone}</span>}
+            {patient.phone2 && <span className="tag tag-gray"><span role="img" aria-label="phone">📞</span> {patient.phone2} (قريب)</span>}
           </div>
+          {(() => {
+            const lastVisit = patient.visits?.slice().sort((a, b) => new Date(b.visitDate || b.createdAt) - new Date(a.visitDate || a.createdAt))[0];
+            if (!lastVisit) return null;
+            return (
+              <div className="last-visit-summary">
+                <Clock size={14} />
+                <span className="last-visit-label">آخر زيارة:</span>
+                <span className="last-visit-date">{format(new Date(lastVisit.visitDate || lastVisit.createdAt), 'dd MMM yyyy')}</span>
+                {lastVisit.workflowStatus && <span className={`status-badge ${lastVisit.workflowStatus.toLowerCase()} last-visit-status`}>{lastVisit.workflowStatus}</span>}
+                {lastVisit.doctorNotes && <span className="last-visit-note">{lastVisit.doctorNotes}</span>}
+              </div>
+            );
+          })()}
         </div>
         <div className="profile-actions">
-          <button className="btn-secondary" onClick={() => navigate('/patients')}>Back</button>
+          <button className="btn-secondary" onClick={() => navigate('/patients')}>{t('common.back')}</button>
           <button className="btn-secondary" onClick={() => navigate(`/patients/${id}/history`)}>
-            <History size={16} /> View Full History
+            <History size={16} /> {t('patient.view_history')}
           </button>
-          <button className="btn-primary" onClick={() => setShowVisitForm(true)}>Add Visit</button>
+          <button className="btn-primary" onClick={() => setShowVisitForm(true)}>{t('patient.add_visit')}</button>
         </div>
       </div>
 
-      <div className="profile-content">
-        <div className="content-left">
-          <div className="info-card">
-            <h3>Demographics</h3>
-            <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Gender</span>
-                <span className="value">{patient.gender}</span>
+      {/* Tab Navigation */}
+      <div className="profile-tabs">
+        {TABS.map(tab => (
+          <button
+            key={tab.key}
+            className={`profile-tab-btn ${activeTab === tab.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="profile-tab-content">
+        {/* OVERVIEW TAB */}
+        {activeTab === 'overview' && (
+          <div className="profile-content">
+            <div className="content-left">
+              <div className="info-card">
+                <h3>{t('patient.demographics')}</h3>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="label">{t('patient.gender')}</span>
+                    <span className="value">{patient.gender}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">{t('patient.birth_date')}</span>
+                    <span className="value">{new Date(patient.birthDate).toLocaleDateString()}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">{t('patient.phone')}</span>
+                    <span className="value">{patient.phone}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">{t('patient.address')}</span>
+                    <span className="value">{patient.address}</span>
+                  </div>
+                </div>
               </div>
-              <div className="info-item">
-                <span className="label">Birth Date</span>
-                <span className="value">{new Date(patient.birthDate).toLocaleDateString()}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Phone</span>
-                <span className="value">{patient.phone}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Address</span>
-                <span className="value">{patient.address}</span>
+
+            </div>
+
+            <div className="content-right">
+              <div className="info-card">
+                <h3>{t('patient.visits_timeline')}</h3>
+                <VisitsTimeline visits={patient.visits} onVisitUpdated={fetchPatient} />
               </div>
             </div>
           </div>
+        )}
 
-          <div className="info-card mt-4">
-            <div className="flex-between">
-              <h3>Medical Cases ({patient.medicalCases?.length || 0})</h3>
-              <button className="btn-secondary btn-sm" onClick={() => setShowCaseForm(true)}>+ New Case</button>
-            </div>
-            {patient.medicalCases?.length > 0 ? (
-              <div className="cases-list">
-                {patient.medicalCases.map(c => (
-                  <div key={c.id} className="case-item">
-                    <h4>{c.diagnosis}</h4>
-                    <p>{c.cancerType} - {c.cancerStage}</p>
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                      <span className={`status-badge ${c.status.toLowerCase()}`}>{c.status}</span>
-                      {JSON.parse(localStorage.getItem('auth_user') || '{}').role === 'admin' && (
-                        <button 
-                          className="btn-secondary btn-sm" 
-                          onClick={async () => {
-                            const newStatus = prompt('Update case status (Active / Finished):', c.status);
-                            if (newStatus && newStatus !== c.status) {
-                               try {
-                                 await apiFetch(`/cases/${c.id}`, { method: 'PUT', body: JSON.stringify({ status: newStatus }) });
-                                 fetchPatient();
-                               } catch(e) { alert(e.message); }
-                            }
-                          }}
-                        >
-                          Edit Status
-                        </button>
-                      )}
+        {/* SCAN HISTORY TAB */}
+        {activeTab === 'scan_history' && (
+          <div className="scan-history-tab">
+            {scanHistoryLoading ? (
+              <div className="dashboard-loading"><div className="spinner" /> {t('common.loading')}</div>
+            ) : scanHistory.length === 0 ? (
+              <div className="empty-state"><Scan size={48} /><p>{t('patient.no_scan_history')}</p></div>
+            ) : (
+              <div className="scan-history-list">
+                {scanHistory.map((scan, i) => (
+                  <div key={scan.id || i} className="record-card">
+                    <div className="record-header">
+                      <div className="patient-info">
+                        <h3 className="type-tag">{scan.scanType?.toUpperCase() || scan.type?.toUpperCase()}</h3>
+                        <span className="text-muted">{scan.date ? format(new Date(scan.date), 'dd MMM yyyy') : '—'}</span>
+                      </div>
+                      <div className="record-meta">
+                        <span className={`status-badge ${(scan.workflowStatus || 'completed').toLowerCase()}`}>
+                          {scan.workflowStatus || 'Completed'}
+                        </span>
+                      </div>
                     </div>
+                    {scan.impression && (
+                      <div className="scan-summary">
+                        <span><strong>{t('physician.impression')}:</strong> {scan.impression}</span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-muted">No cases registered.</p>
             )}
           </div>
-        </div>
-
-        <div className="content-right">
-          <div className="info-card">
-            <h3>Visits Timeline</h3>
-            <VisitsTimeline visits={patient.visits} onVisitUpdated={fetchPatient} />
-          </div>
-          <div className="info-card mt-4">
-            <div className="flex-between">
-              <h3>Recent Activity (آخر النشاط)</h3>
-              <button className="btn-secondary btn-sm" onClick={() => navigate(`/patients/${id}/history`)}>
-                View All
-              </button>
-            </div>
-            {loadingTimeline ? (
-              <div className="loading-spinner">Loading...</div>
-            ) : miniTimeline.length > 0 ? (
-              <div className="mini-timeline">
-                {miniTimeline.map((record, index) => (
-                  <div key={record.id || index} className="mini-timeline-item">
-                    <div className="mini-timeline-date">
-                      <Calendar size={14} />
-                      <span>{format(new Date(record.date), 'MMM dd, yyyy')}</span>
-                    </div>
-                    <div className="mini-timeline-badge">
-                      {record.recordType === 'clinic' ? (
-                        <span className={`badge ${record.type === 'green' ? 'badge-green' : 'badge-red'}`}>
-                          <FileText size={12} /> {record.type === 'green' ? 'Green File' : 'Red File'}
-                        </span>
-                      ) : (
-                        <span className="badge badge-purple">
-                          <Scan size={12} /> {record.type?.toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted">No recent activity</p>
-            )}
-          </div>
-        </div>
+        )}
       </div>
 
       {showVisitForm && (
-        <VisitCreate 
-          patientId={patient.id} 
-          medicalCases={patient.medicalCases} 
-          onVisitCreated={handleVisitCreated}
-          onCancel={() => setShowVisitForm(false)} 
-        />
-      )}
-      
-      {showCaseForm && (
-        <CaseCreate 
+        <VisitCreate
           patientId={patient.id}
-          onCaseCreated={handleCaseCreated}
-          onCancel={() => setShowCaseForm(false)}
+          onCancel={() => setShowVisitForm(false)}
         />
       )}
+
     </div>
   );
 };

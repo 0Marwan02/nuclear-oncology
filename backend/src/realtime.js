@@ -3,12 +3,11 @@ const jwt = require('jsonwebtoken');
 
 let io = null;
 
-const VALID_ROLE_ROOMS = ['physician', 'nurse', 'technician', 'reception', 'admin'];
+const VALID_ROLE_ROOMS = ['physician', 'nurse', 'technician', 'admin'];
 
 // Map a user role to the socket room it should join.
 const roomForRole = (role) => {
   if (role === 'doctor') return 'physician';
-  if (role === 'receptionist') return 'reception';
   return role;
 };
 
@@ -47,7 +46,7 @@ const initRealtime = (httpServer) => {
 
 /**
  * Notify a station that its queue changed.
- * @param {string} role  target room: 'physician' | 'nurse' | 'technician' | 'reception'
+ * @param {string} role  target room: 'physician' | 'nurse' | 'technician'
  * @param {object} payload { event, record }
  */
 const emitQueue = (role, payload = {}) => {

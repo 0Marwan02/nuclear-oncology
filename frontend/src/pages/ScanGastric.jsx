@@ -1,39 +1,81 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, FileText, UtensilsCrossed, Calendar, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Upload, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, FileText, UtensilsCrossed, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { createScan, getScanHistory, apiFetch } from '../utils/api';
-import ScanFormExtras from '../components/ScanFormExtras';
-import { buildScanPayload } from '../utils/scanPayload';
-import './ScanGastric.css';
+import { useScanRole, useAdminWorkflow, DoctorActionFooter, AdminDoneFooter, AdminReportFooter, RoleCreateNotice } from '../utils/scanSheet';
+import './ScanThyroid.css';
 
-const MEAL_TYPE_OPTIONS = ['Solid', 'Liquid', 'Mixed'];
+const MCi_TO_MBq = 37;
+const TODAY = new Date().toISOString().split('T')[0];
+
+const emptyForm = () => ({
+  // Doctor
+  diagnosis: '',
+  complaint: '',
+  contraceptiveStatus: '',
+  lmpDate: '',
+  surgeryHistory: '',
+  surgeryDate: '',
+  endoscopyDate: '',
+  dmHistory: false,
+  drugOpiates: false,
+  drugNicotine: false,
+  drugAntidepressant: false,
+  // Labs
+  labDate: '',
+  labCa: '',
+  labK: '',
+  labTsh: '',
+  labFt3: '',
+  labFt4: '',
+  // Previous investigations
+  abdominalUsDate: '',
+  ctMriDate: '',
+  ctMriSite: '',
+  // Nurse
+  prepWeight: '',
+  prepHeight: '',
+  prepBloodGlucose: '',
+  injectionSide: 'RT',
+  injectionLimb: 'hand',
+  prepNurseNotes: '',
+  // Tech
+  mealType: 'Solid',
+  tc99mDoseMCi: '',
+  ingestionTime: '',
+  scanStartTime: '',
+  scanDuration: '',
+  imageInterval: '',
+  delayedImages: false,
+  delayedImagesNotes: '',
+  // Results
+  halfEmptyingTime: '',
+  retention1h: '',
+  retention2h: '',
+  retention4h: '',
+  delayedEmptying: false,
+  rapidEmptying: false,
+  refluxSign: false,
+  aspirationSign: false,
+  impression: '',
+  physicianNotes: '',
+});
 
 const ScanGastric = () => {
+  const [searchParams] = useSearchParams();
+  const { isAdmin, canCreate } = useScanRole();
+  const admin = useAdminWorkflow('gastric');
   const [patients, setPatients] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
 
-  const [formData, setFormData] = useState({
-    mealType: '',
-    tc99mDose: '',
-    ingestionTime: '',
-    scanStartTime: '',
-    scanDuration: '',
-    imageInterval: '',
-    halfEmptyingTime: '',
-    retention1h: '',
-    retention2h: '',
-    retention4h: '',
-    delayedEmptying: false,
-    rapidEmptying: false,
-    refluxSign: false,
-    aspirationSign: false,
-    impression: '',
-    physicianNotes: '',
-    files: [],
-  });
-
+  useEffect(() => {
+    const pid = searchParams.get('patientId');
+    if (pid) apiFetch(`/patients/${pid}`).then(p => { setSelectedPatient(p); setSearchQuery(p.name); }).catch(() => {});
+  }, []);
+  const [formData, setFormData] = useState(emptyForm());
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -41,15 +83,11 @@ const ScanGastric = () => {
   const [success, setSuccess] = useState('');
   const [expandedRow, setExpandedRow] = useState(null);
 
-  const searchRef = useRef(null);
   const dropdownRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowDropdown(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -57,108 +95,82 @@ const ScanGastric = () => {
 
   useEffect(() => {
     if (searchQuery.length >= 2) {
-      searchPatients();
-    } else {
-      setPatients([]);
-    }
+      apiFetch(`/patients?q=${encodeURIComponent(searchQuery)}`)
+        .then((d) => setPatients(Array.isArray(d) ? d : []))
+        .catch(() => setPatients([]));
+    } else setPatients([]);
   }, [searchQuery]);
 
   useEffect(() => {
     if (selectedPatient) {
-      fetchHistory();
+      setHistoryLoading(true);
+      getScanHistory('gastric', selectedPatient.id)
+        .then((d) => setHistory(Array.isArray(d) ? d : []))
+        .catch(() => setHistory([]))
+        .finally(() => setHistoryLoading(false));
     }
   }, [selectedPatient]);
 
-  const searchPatients = async () => {
-    try {
-      const data = await apiFetch(`/patients?q=${encodeURIComponent(searchQuery)}`);
-      setPatients(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-      setPatients([]);
-    }
-  };
+  const set = (field, value) => setFormData((p) => ({ ...p, [field]: value }));
 
-  const selectPatient = (patient) => {
-    setSelectedPatient(patient);
-    setSearchQuery(patient.name);
+  const selectPatient = (p) => {
+    setSelectedPatient(p);
+    setSearchQuery(p.name);
     setShowDropdown(false);
-    setFormData({
-      mealType: '',
-      tc99mDose: '',
-      ingestionTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-      scanStartTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-      scanDuration: '',
-      imageInterval: '',
-      halfEmptyingTime: '',
-      retention1h: '',
-      retention2h: '',
-      retention4h: '',
-      delayedEmptying: false,
-      rapidEmptying: false,
-      refluxSign: false,
-      aspirationSign: false,
-      impression: '',
-      physicianNotes: '',
-      files: [],
-    });
+    setFormData(emptyForm());
+    setError('');
+    setSuccess('');
+    admin.reset();
   };
 
-  const fetchHistory = async () => {
-    if (!selectedPatient?.id) return;
-    setHistoryLoading(true);
-    try {
-      const data = await getScanHistory('gastric', selectedPatient.id);
-      setHistory(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-      setHistory([]);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    setFormData((prev) => ({ ...prev, files: [...prev.files, ...files] }));
-  };
-
-  const removeFile = (index) => {
-    setFormData((prev) => ({ ...prev, files: prev.files.filter((_, i) => i !== index) }));
-  };
+  const isFemale = selectedPatient?.gender?.toLowerCase() === 'female';
+  const mbq = formData.tc99mDoseMCi ? (parseFloat(formData.tc99mDoseMCi) * MCi_TO_MBq).toFixed(0) : '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isAdmin && admin.progress.doctor) return;
     setError('');
     setSuccess('');
-
-    if (!selectedPatient) {
-      setError('Please select a patient first');
-      return;
-    }
-    if (!formData.mealType) {
-      setError('Meal type is required');
-      return;
-    }
-    if (!formData.tc99mDose) {
-      setError('Tc-99m Dose is required');
-      return;
-    }
+    if (!selectedPatient) { setError('Please select a patient first'); return; }
 
     setSubmitting(true);
     try {
-      const payload = buildScanPayload('gastric', formData, {
+      const injectionSite = `${formData.injectionSide} ${formData.injectionLimb}`;
+      const payload = {
         patientId: selectedPatient.id,
+        diagnosis: formData.diagnosis || null,
+        complaint: formData.complaint || null,
+        contraceptiveStatus: formData.contraceptiveStatus || null,
+        lmpDate: formData.lmpDate || null,
+        surgeryHistory: formData.surgeryHistory || null,
+        surgeryDate: formData.surgeryDate || null,
+        endoscopyDate: formData.endoscopyDate || null,
+        dmHistory: formData.dmHistory,
+        drugOpiates: formData.drugOpiates,
+        drugNicotine: formData.drugNicotine,
+        drugAntidepressant: formData.drugAntidepressant,
+        labDate: formData.labDate || null,
+        labCa: formData.labCa ? parseFloat(formData.labCa) : null,
+        labK: formData.labK ? parseFloat(formData.labK) : null,
+        labTsh: formData.labTsh ? parseFloat(formData.labTsh) : null,
+        labFt3: formData.labFt3 ? parseFloat(formData.labFt3) : null,
+        labFt4: formData.labFt4 ? parseFloat(formData.labFt4) : null,
+        abdominalUsDate: formData.abdominalUsDate || null,
+        ctMriDate: formData.ctMriDate || null,
+        ctMriFindings: formData.ctMriSite || null,
+        prepWeight: formData.prepWeight ? parseFloat(formData.prepWeight) : null,
+        prepHeight: formData.prepHeight ? parseFloat(formData.prepHeight) : null,
+        prepBloodGlucose: formData.prepBloodGlucose ? parseFloat(formData.prepBloodGlucose) : null,
+        injectionSite,
+        prepNurseNotes: formData.prepNurseNotes || null,
         mealType: formData.mealType,
-        tc99mDose: parseFloat(formData.tc99mDose) || null,
+        tc99mDoseMCi: parseFloat(formData.tc99mDoseMCi),
         ingestionTime: formData.ingestionTime || null,
         scanStartTime: formData.scanStartTime || null,
         scanDuration: formData.scanDuration ? parseInt(formData.scanDuration) : null,
         imageInterval: formData.imageInterval ? parseInt(formData.imageInterval) : null,
+        delayedImages: formData.delayedImages,
+        delayedImagesNotes: formData.delayedImagesNotes || null,
         halfEmptyingTime: formData.halfEmptyingTime ? parseFloat(formData.halfEmptyingTime) : null,
         retention1h: formData.retention1h ? parseFloat(formData.retention1h) : null,
         retention2h: formData.retention2h ? parseFloat(formData.retention2h) : null,
@@ -167,34 +179,23 @@ const ScanGastric = () => {
         rapidEmptying: formData.rapidEmptying,
         refluxSign: formData.refluxSign,
         aspirationSign: formData.aspirationSign,
-        impression: formData.impression,
-        physicianNotes: formData.physicianNotes,
-        workflowStatus: 'Assessed',
-      });
+        impression: formData.impression || null,
+        physicianNotes: formData.physicianNotes || null,
+        workflowStatus: 'Pending_Nurse',
+      };
 
-      await createScan('gastric', payload);
-      setSuccess('Gastric emptying scan record created successfully');
-      setFormData({
-        mealType: '',
-        tc99mDose: '',
-        ingestionTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        scanStartTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        scanDuration: '',
-        imageInterval: '',
-        halfEmptyingTime: '',
-        retention1h: '',
-        retention2h: '',
-        retention4h: '',
-        delayedEmptying: false,
-        rapidEmptying: false,
-        refluxSign: false,
-        aspirationSign: false,
-        impression: '',
-        physicianNotes: '',
-        files: [],
-      });
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      fetchHistory();
+      const result = await createScan('gastric', payload);
+      if (isAdmin) {
+        admin.onCreated(result.id);
+        setSuccess('Record created. Use the section buttons below to advance each stage.');
+      } else {
+        setSuccess('Gastric scintigraphy record created — sent to nurse.');
+        setFormData(emptyForm());
+      }
+      setHistoryLoading(true);
+      getScanHistory('gastric', selectedPatient.id)
+        .then((d) => setHistory(Array.isArray(d) ? d : []))
+        .finally(() => setHistoryLoading(false));
     } catch (err) {
       setError(err.message || 'Failed to save record');
     } finally {
@@ -202,44 +203,29 @@ const ScanGastric = () => {
     }
   };
 
-  const toggleExpand = (id) => {
-    setExpandedRow(expandedRow === id ? null : id);
-  };
-
   return (
-    <div className="scan-page gastric-page">
+    <div className="scan-page">
       <div className="scan-header">
-        <div className="scan-header-icon gastric-icon">
+        <div className="scan-header-icon" style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' }}>
           <UtensilsCrossed size={28} />
         </div>
         <div>
-          <h1>Gastric Emptying Scan</h1>
-          <p className="scan-subtitle">فحص تفريغ المعدة</p>
+          <h1>Gastric Emptying Scintigraphy</h1>
+          <p className="scan-subtitle">Tc-99m DTPA — Dynamic / Static</p>
         </div>
       </div>
 
+      {/* Patient selector */}
       <div className="patient-selector-section">
         <h2><Search size={18} />Select Patient</h2>
         <div className="search-wrapper" ref={dropdownRef}>
           <div className="patient-search-input">
             <Search size={18} className="search-icon-input" />
-            <input
-              ref={searchRef}
-              type="text"
-              placeholder="Search by patient name or national ID..."
+            <input type="text" placeholder="Search by name or national ID..."
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setShowDropdown(true);
-                if (selectedPatient && e.target.value !== selectedPatient.name) {
-                  setSelectedPatient(null);
-                }
-              }}
-              onFocus={() => setShowDropdown(true)}
-            />
-            {selectedPatient && (
-              <button className="clear-search" onClick={() => { setSelectedPatient(null); setSearchQuery(''); setHistory([]); }}>✕</button>
-            )}
+              onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); if (selectedPatient && e.target.value !== selectedPatient.name) setSelectedPatient(null); }}
+              onFocus={() => setShowDropdown(true)} />
+            {selectedPatient && <button className="clear-search" onClick={() => { setSelectedPatient(null); setSearchQuery(''); setHistory([]); }}>✕</button>}
           </div>
           {showDropdown && patients.length > 0 && !selectedPatient && (
             <div className="patient-dropdown">
@@ -263,201 +249,315 @@ const ScanGastric = () => {
               <div className="patient-card-tags">
                 <span className="tag tag-blue">ID: {selectedPatient.nationalId}</span>
                 {selectedPatient.gender && <span className="tag tag-gray">{selectedPatient.gender}</span>}
-                {selectedPatient.birthDate && (
-                  <span className="tag tag-gray">DOB: {format(new Date(selectedPatient.birthDate), 'dd/MM/yyyy')}</span>
-                )}
+                {selectedPatient.birthDate && <span className="tag tag-gray">DOB: {format(new Date(selectedPatient.birthDate), 'dd/MM/yyyy')}</span>}
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {error && (<div className="notification notification-error fade-in"><AlertCircle size={18} /><span>{error}</span></div>)}
-      {success && (<div className="notification notification-success fade-in"><CheckCircle size={18} /><span>{success}</span></div>)}
+      {error && <div className="notification notification-error fade-in"><AlertCircle size={18} /><span>{error}</span></div>}
+      {success && <div className="notification notification-success fade-in"><CheckCircle size={18} /><span>{success}</span></div>}
 
-      {selectedPatient && (
-        <>
-          <ScanFormExtras patientId={selectedPatient.id} scanType="gastric" formData={formData} setFormData={setFormData} files={formData.files} onFileChange={handleFileChange} />
-        <form className="clinic-form" onSubmit={handleSubmit}>
-          <div className="form-section">
-            <h3><Calendar size={18} />Gastric Emptying Details</h3>
+      {selectedPatient && !canCreate && <RoleCreateNotice />}
 
-            <div className="form-section-inner">
-              <h4>Meal & Radiopharmaceutical</h4>
-              <div className="lab-grid">
-                <div className="form-group">
-                  <label>Meal Type <span className="required-star">*</span></label>
-                  <select value={formData.mealType} onChange={(e) => handleChange('mealType', e.target.value)} required>
-                    <option value="">Select meal type...</option>
-                    {MEAL_TYPE_OPTIONS.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Tc-99m Dose <span className="required-star">*</span> <span className="unit-label">(mCi)</span></label>
-                  <input type="number" step="any" placeholder="e.g., 0.5" value={formData.tc99mDose} onChange={(e) => handleChange('tc99mDose', e.target.value)} required />
-                </div>
-              </div>
-            </div>
+      {selectedPatient && canCreate && (
+        <form className="scan-sheet-form" onSubmit={handleSubmit}>
 
-            <div className="form-section-inner">
-              <h4>Timing</h4>
-              <div className="form-row-two">
-                <div className="form-group">
-                  <label>Ingestion Time</label>
-                  <input type="datetime-local" value={formData.ingestionTime} onChange={(e) => handleChange('ingestionTime', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label>Scan Start Time</label>
-                  <input type="datetime-local" value={formData.scanStartTime} onChange={(e) => handleChange('scanStartTime', e.target.value)} />
-                </div>
-              </div>
-              <div className="lab-grid mt-16">
-                <div className="form-group">
-                  <label>Scan Duration <span className="unit-label">(minutes)</span></label>
-                  <input type="number" placeholder="e.g., 120" value={formData.scanDuration} onChange={(e) => handleChange('scanDuration', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label>Image Interval <span className="unit-label">(minutes)</span></label>
-                  <input type="number" placeholder="e.g., 15" value={formData.imageInterval} onChange={(e) => handleChange('imageInterval', e.target.value)} />
-                </div>
-              </div>
-            </div>
+          {/* ── DOCTOR SECTION ── */}
+          <div className="sheet-section doctor-section">
+            <div className="section-role-badge doctor-badge">Doctor</div>
 
-            <div className="form-section-inner">
-              <h4>Emptying Measurements</h4>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Half Emptying Time <span className="unit-label">(minutes)</span></label>
-                  <input type="number" step="any" placeholder="T1/2" value={formData.halfEmptyingTime} onChange={(e) => handleChange('halfEmptyingTime', e.target.value)} />
-                </div>
-              </div>
-              <div className="lab-grid mt-16">
-                <div className="form-group">
-                  <label>Retention at 1h <span className="unit-label">(%)</span></label>
-                  <input type="number" step="any" min="0" max="100" placeholder="%" value={formData.retention1h} onChange={(e) => handleChange('retention1h', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label>Retention at 2h <span className="unit-label">(%)</span></label>
-                  <input type="number" step="any" min="0" max="100" placeholder="%" value={formData.retention2h} onChange={(e) => handleChange('retention2h', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label>Retention at 4h <span className="unit-label">(%)</span></label>
-                  <input type="number" step="any" min="0" max="100" placeholder="%" value={formData.retention4h} onChange={(e) => handleChange('retention4h', e.target.value)} />
-                </div>
-              </div>
-            </div>
-
-            <div className="form-section-inner">
-              <h4>Abnormal Findings</h4>
-              <div className="checkbox-group">
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={formData.delayedEmptying} onChange={(e) => handleChange('delayedEmptying', e.target.checked)} />
-                  <span>Delayed Emptying</span>
-                </label>
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={formData.rapidEmptying} onChange={(e) => handleChange('rapidEmptying', e.target.checked)} />
-                  <span>Rapid Emptying</span>
-                </label>
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={formData.refluxSign} onChange={(e) => handleChange('refluxSign', e.target.checked)} />
-                  <span>Reflux Sign</span>
-                </label>
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={formData.aspirationSign} onChange={(e) => handleChange('aspirationSign', e.target.checked)} />
-                  <span>Aspiration Sign</span>
-                </label>
+            <div className="sheet-row">
+              <div className="form-group flex-2">
+                <label>Indication / Complaint</label>
+                <textarea rows={2} value={formData.complaint} onChange={(e) => set('complaint', e.target.value)} placeholder="Abdominal pain, vomiting, nausea, bloating..." />
               </div>
             </div>
 
             <div className="form-group">
-              <label>Impression</label>
-              <textarea rows={4} placeholder="Overall impression and conclusion..." value={formData.impression} onChange={(e) => handleChange('impression', e.target.value)} />
+              <label>Diagnosis</label>
+              <input type="text" value={formData.diagnosis} onChange={(e) => set('diagnosis', e.target.value)} placeholder="e.g., Gastroparesis, gastric emptying delay..." />
             </div>
 
-            <div className="form-group">
-              <label>Physician Notes</label>
-              <textarea rows={3} placeholder="Additional notes..." value={formData.physicianNotes} onChange={(e) => handleChange('physicianNotes', e.target.value)} />
-            </div>
-
-            <div className="form-section-inner">
-              <h4>Scan Images</h4>
-              <div className="file-upload-area">
-                <input type="file" ref={fileInputRef} multiple accept="image/*,.pdf,.dcm" onChange={handleFileChange} className="file-input-hidden" />
-                <button type="button" className="btn-upload" onClick={() => fileInputRef.current?.click()}>
-                  <Upload size={18} />
-                  Upload Scan Images
-                </button>
-                {formData.files.length > 0 && (
-                  <div className="file-list">
-                    {formData.files.map((file, i) => (
-                      <div key={i} className="file-item">
-                        <span className="file-name">{file.name}</span>
-                        <button type="button" className="file-remove" onClick={() => removeFile(i)}><X size={14} /></button>
-                      </div>
+            {/* Contraception */}
+            {isFemale && (
+              <div className="sheet-subsection">
+                <div className="subsection-title">Contraceptive History</div>
+                <div className="sheet-row">
+                  <div className="radio-group">
+                    {['single', 'postmenopausal', 'married'].map((s) => (
+                      <button key={s} type="button"
+                        className={`radio-chip${formData.contraceptiveStatus === s ? ' active' : ''}`}
+                        onClick={() => set('contraceptiveStatus', s)}>
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </button>
                     ))}
                   </div>
-                )}
+                  {formData.contraceptiveStatus === 'married' && (
+                    <div className="form-group">
+                      <label>Date of LMP</label>
+                      <input type="date" max={TODAY} value={formData.lmpDate} onChange={(e) => set('lmpDate', e.target.value)} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Surgery */}
+            <div className="sheet-subsection">
+              <div className="sheet-row">
+                <div className="form-group flex-2">
+                  <label>Previous Surgery</label>
+                  <input type="text" value={formData.surgeryHistory} onChange={(e) => set('surgeryHistory', e.target.value)} placeholder="e.g., Vagotomy, gastrectomy..." />
+                </div>
+                <div className="form-group">
+                  <label>Date</label>
+                  <input type="date" max={TODAY} value={formData.surgeryDate} onChange={(e) => set('surgeryDate', e.target.value)} />
+                </div>
               </div>
             </div>
 
-            <div className="form-actions">
-              <button type="submit" className="btn-primary btn-lg" disabled={submitting}>
-                {submitting ? (<><Loader2 size={18} className="spin" />Saving...</>) : (<><FileText size={18} />Create Gastric Record</>)}
-              </button>
+            {/* Endoscopy */}
+            <div className="sheet-subsection">
+              <div className="sheet-row">
+                <div className="form-group flex-2">
+                  <label>History of Endoscopic Intervention</label>
+                  <input type="text" value={formData.endoscopyDate} onChange={(e) => set('endoscopyDate', e.target.value)} placeholder="Date or description..." />
+                </div>
+              </div>
+            </div>
+
+            {/* Chronic diseases + drugs */}
+            <div className="sheet-subsection">
+              <div className="subsection-title">History of Chronic Disease</div>
+              <div className="sheet-row" style={{ alignItems: 'center', gap: 24 }}>
+                <label className="checkbox-label">
+                  <input type="checkbox" checked={formData.dmHistory} onChange={(e) => set('dmHistory', e.target.checked)} />
+                  <span>DM</span>
+                </label>
+              </div>
+              <div className="subsection-title" style={{ marginTop: 14 }}>Drug History</div>
+              <div className="sheet-row" style={{ gap: 24 }}>
+                <label className="checkbox-label">
+                  <input type="checkbox" checked={formData.drugOpiates} onChange={(e) => set('drugOpiates', e.target.checked)} />
+                  <span>Opiates</span>
+                </label>
+                <label className="checkbox-label">
+                  <input type="checkbox" checked={formData.drugNicotine} onChange={(e) => set('drugNicotine', e.target.checked)} />
+                  <span>Nicotine</span>
+                </label>
+                <label className="checkbox-label">
+                  <input type="checkbox" checked={formData.drugAntidepressant} onChange={(e) => set('drugAntidepressant', e.target.checked)} />
+                  <span>Anti-depressant</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Labs */}
+            <div className="sheet-subsection">
+              <div className="subsection-title">Laboratory Investigation</div>
+              <div className="sheet-row">
+                <div className="form-group">
+                  <label>Date</label>
+                  <input type="date" max={TODAY} value={formData.labDate} onChange={(e) => set('labDate', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>Ca <span className="unit">mg/dL</span></label>
+                  <input type="number" step="any" value={formData.labCa} onChange={(e) => set('labCa', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>K <span className="unit">mEq/L</span></label>
+                  <input type="number" step="any" value={formData.labK} onChange={(e) => set('labK', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>TSH <span className="unit">mIU/L</span></label>
+                  <input type="number" step="any" value={formData.labTsh} onChange={(e) => set('labTsh', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>FT3</label>
+                  <input type="number" step="any" value={formData.labFt3} onChange={(e) => set('labFt3', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>FT4</label>
+                  <input type="number" step="any" value={formData.labFt4} onChange={(e) => set('labFt4', e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            {/* Prev investigations */}
+            <div className="sheet-subsection">
+              <div className="subsection-title">Previous Investigations</div>
+              <div className="sheet-row">
+                <div className="form-group"><label>Upper Endoscopy / Abdominal US Date</label><input type="date" max={TODAY} value={formData.abdominalUsDate} onChange={(e) => set('abdominalUsDate', e.target.value)} /></div>
+                <div className="form-group"><label>CT / MRI Date</label><input type="date" max={TODAY} value={formData.ctMriDate} onChange={(e) => set('ctMriDate', e.target.value)} /></div>
+                <div className="form-group flex-2"><label>CT / MRI Site</label><input type="text" value={formData.ctMriSite} onChange={(e) => set('ctMriSite', e.target.value)} /></div>
+              </div>
             </div>
           </div>
+
+          <DoctorActionFooter isAdmin={isAdmin} admin={admin} submitting={submitting} />
+
+          {isAdmin && (<>
+          {/* ── NURSE SECTION ── */}
+          <div className="sheet-section nurse-section">
+            <div className="section-role-badge nurse-badge">Nurse</div>
+            <div className="sheet-row">
+              <div className="form-group"><label>Weight <span className="unit">kg</span></label><input type="number" step="any" value={formData.prepWeight} onChange={(e) => set('prepWeight', e.target.value)} placeholder="65" /></div>
+              <div className="form-group"><label>Height <span className="unit">cm</span></label><input type="number" step="any" value={formData.prepHeight} onChange={(e) => set('prepHeight', e.target.value)} placeholder="170" /></div>
+            </div>
+            <div className="form-group"><label>Nurse Notes</label><textarea rows={2} value={formData.prepNurseNotes} onChange={(e) => set('prepNurseNotes', e.target.value)} /></div>
+          </div>
+
+          <AdminDoneFooter stage="nurse" label="Nurse" done={admin.progress.nurse} disabled={!admin.progress.doctor} advancing={admin.advancing} onClick={() => admin.advance('Pending_Technical', 'nurse')} />
+
+          {/* ── TECHNICIAN SECTION ── */}
+          <div className="sheet-section tech-section">
+            <div className="section-role-badge tech-badge">Technician</div>
+
+            <div className="form-group">
+              <label>Glucose Level / Blood Sugar <span className="unit">mg/dL</span></label>
+              <input type="number" step="any" value={formData.prepBloodGlucose} onChange={(e) => set('prepBloodGlucose', e.target.value)} placeholder="90" style={{ width: 120 }} />
+            </div>
+
+            <div className="form-group">
+              <label>Meal Type</label>
+              <div className="radio-group">
+                {['Solid', 'Liquid', 'Mixed'].map((t) => (
+                  <button key={t} type="button"
+                    className={`radio-chip${formData.mealType === t ? ' active' : ''}`}
+                    onClick={() => set('mealType', t)}>{t}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="dose-input-row">
+              <div className="form-group">
+                <label>Injected Dose <span className="required-star">*</span></label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="number" step="any" value={formData.tc99mDoseMCi} onChange={(e) => set('tc99mDoseMCi', e.target.value)} placeholder="0.5" style={{ width: 100 }} />
+                  <span className="dose-unit">mCi</span>
+                  {mbq && <span className="dose-mbq">= {mbq} MBq</span>}
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Injection Site</label>
+              <div className="site-chips-row">
+                {['RT', 'LT'].map((s) => (
+                  <button key={s} type="button" className={`site-chip${formData.injectionSide === s ? ' active' : ''}`} onClick={() => set('injectionSide', s)}>{s}</button>
+                ))}
+                <span className="site-sep">—</span>
+                {['hand', 'foot', 'forearm'].map((l) => (
+                  <button key={l} type="button" className={`site-chip${formData.injectionLimb === l ? ' active' : ''}`} onClick={() => set('injectionLimb', l)}>{l}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="sheet-row">
+              <div className="form-group"><label>Ingestion Time</label><input type="datetime-local" value={formData.ingestionTime} onChange={(e) => set('ingestionTime', e.target.value)} /></div>
+              <div className="form-group"><label>Scan Start Time</label><input type="datetime-local" value={formData.scanStartTime} onChange={(e) => set('scanStartTime', e.target.value)} /></div>
+              <div className="form-group"><label>Scan Duration <span className="unit">min</span></label><input type="number" value={formData.scanDuration} onChange={(e) => set('scanDuration', e.target.value)} style={{ width: 90 }} /></div>
+              <div className="form-group"><label>Image Interval <span className="unit">min</span></label><input type="number" value={formData.imageInterval} onChange={(e) => set('imageInterval', e.target.value)} style={{ width: 90 }} /></div>
+            </div>
+
+            <div className="sheet-subsection">
+              <label className="checkbox-label">
+                <input type="checkbox" checked={formData.delayedImages} onChange={(e) => set('delayedImages', e.target.checked)} />
+                <span>More Acquisition</span>
+              </label>
+              {formData.delayedImages && (
+                <textarea rows={2} className="mt-8" value={formData.delayedImagesNotes} onChange={(e) => set('delayedImagesNotes', e.target.value)} placeholder="Describe..." />
+              )}
+            </div>
+          </div>
+
+          <AdminDoneFooter stage="tech" label="Technical" done={admin.progress.tech} disabled={!admin.progress.nurse} advancing={admin.advancing} onClick={() => admin.advance('Pending_Report', 'tech')} />
+
+          {/* ── RESULTS SECTION ── */}
+          <div className="sheet-section results-section">
+            <div className="section-role-badge results-badge">Results</div>
+
+            <div className="renal-results-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+              <div className="form-group">
+                <label>T½ Emptying <span className="unit">min</span></label>
+                <input type="number" step="any" value={formData.halfEmptyingTime} onChange={(e) => set('halfEmptyingTime', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Retention at 1h <span className="unit">%</span></label>
+                <input type="number" step="any" value={formData.retention1h} onChange={(e) => set('retention1h', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Retention at 2h <span className="unit">%</span></label>
+                <input type="number" step="any" value={formData.retention2h} onChange={(e) => set('retention2h', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Retention at 4h <span className="unit">%</span></label>
+                <input type="number" step="any" value={formData.retention4h} onChange={(e) => set('retention4h', e.target.value)} />
+              </div>
+            </div>
+
+            <div className="sheet-row" style={{ gap: 24, marginTop: 12 }}>
+              {[
+                { field: 'delayedEmptying', label: 'Delayed Emptying' },
+                { field: 'rapidEmptying', label: 'Rapid Emptying' },
+                { field: 'refluxSign', label: 'Reflux Sign' },
+                { field: 'aspirationSign', label: 'Aspiration Sign' },
+              ].map(({ field, label }) => (
+                <label key={field} className="checkbox-label">
+                  <input type="checkbox" checked={formData[field]} onChange={(e) => set(field, e.target.checked)} />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="form-group mt-12"><label>Impression</label><textarea rows={4} value={formData.impression} onChange={(e) => set('impression', e.target.value)} /></div>
+            <div className="form-group"><label>Physician Notes</label><textarea rows={2} value={formData.physicianNotes} onChange={(e) => set('physicianNotes', e.target.value)} /></div>
+
+            <AdminReportFooter admin={admin} />
+          </div>
+          </>)}
         </form>
-        </>
       )}
 
+      {/* History */}
       {selectedPatient && (
         <div className="history-section">
-          <h3><FileText size={18} />Patient Gastric History ({history.length})</h3>
-          {historyLoading ? (<div className="loading-state"><Loader2 size={24} className="spin" />Loading...</div>) : history.length === 0 ? (<div className="empty-state">No previous gastric emptying scans recorded.</div>) : (
+          <h3><FileText size={18} />Gastric Scintigraphy History ({history.length})</h3>
+          {historyLoading ? (
+            <div className="loading-state"><Loader2 size={24} className="spin" />Loading...</div>
+          ) : history.length === 0 ? (
+            <div className="empty-state">No previous gastric scans recorded.</div>
+          ) : (
             <div className="history-table-wrapper">
               <table className="history-table">
-                <thead>
-                  <tr><th>Date</th><th>Meal</th><th>T1/2 (min)</th><th>1h Retention</th><th>2h Retention</th><th>4h Retention</th><th>Signs</th><th>Actions</th></tr>
-                </thead>
+                <thead><tr><th>Date</th><th>Meal Type</th><th>T½ (min)</th><th>Delayed Empty.</th><th>Impression</th><th></th></tr></thead>
                 <tbody>
                   {history.map((entry) => (
                     <React.Fragment key={entry.id}>
-                      <tr className={expandedRow === entry.id ? 'expanded' : ''}>
-                        <td>{entry.createdAt ? format(new Date(entry.createdAt), 'dd MMM yyyy HH:mm') : 'N/A'}</td>
+                      <tr>
+                        <td>{entry.createdAt ? format(new Date(entry.createdAt), 'dd MMM yyyy') : '—'}</td>
                         <td>{entry.mealType || '—'}</td>
-                        <td>{entry.halfEmptyingTime != null ? `${entry.halfEmptyingTime}` : '—'}</td>
-                        <td>{entry.retention1h != null ? `${entry.retention1h}%` : '—'}</td>
-                        <td>{entry.retention2h != null ? `${entry.retention2h}%` : '—'}</td>
-                        <td>{entry.retention4h != null ? `${entry.retention4h}%` : '—'}</td>
-                        <td>
-                          <div className="meta-tags">
-                            {entry.delayedEmptying && <span className="tag tag-orange">Delayed</span>}
-                            {entry.rapidEmptying && <span className="tag tag-red">Rapid</span>}
-                            {entry.refluxSign && <span className="tag tag-blue">Reflux</span>}
-                            {entry.aspirationSign && <span className="tag tag-purple">Aspiration</span>}
-                            {!entry.delayedEmptying && !entry.rapidEmptying && !entry.refluxSign && !entry.aspirationSign && <span>—</span>}
-                          </div>
-                        </td>
-                        <td className="actions-cell">
-                          <button className="btn-icon" onClick={() => toggleExpand(entry.id)} title="View details">
-                            {expandedRow === entry.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                          </button>
-                        </td>
+                        <td>{entry.halfEmptyingTime ?? '—'}</td>
+                        <td>{entry.delayedEmptying ? <span className="status-badge status-cancelled">Yes</span> : <span className="status-badge status-completed">No</span>}</td>
+                        <td className="impression-cell">{entry.impression ? entry.impression.slice(0, 60) + (entry.impression.length > 60 ? '…' : '') : '—'}</td>
+                        <td><button className="btn-icon" onClick={() => setExpandedRow(expandedRow === entry.id ? null : entry.id)}>{expandedRow === entry.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</button></td>
                       </tr>
                       {expandedRow === entry.id && (
-                        <tr key={`${entry.id}-detail`} className="detail-row">
-                          <td colSpan={8}>
-                            <div className="detail-content">
-                              <div className="detail-grid">
-                                <div className="detail-item"><span className="detail-label">Tc-99m Dose:</span><span>{entry.tc99mDose != null ? `${entry.tc99mDose} mCi` : '—'}</span></div>
-                                <div className="detail-item"><span className="detail-label">Scan Duration:</span><span>{entry.scanDuration != null ? `${entry.scanDuration} min` : '—'}</span></div>
-                                <div className="detail-item"><span className="detail-label">Image Interval:</span><span>{entry.imageInterval != null ? `${entry.imageInterval} min` : '—'}</span></div>
-                              </div>
-                              {entry.impression && (<div className="detail-text"><strong>Impression:</strong><p>{entry.impression}</p></div>)}
-                              {entry.physicianNotes && (<div className="detail-text"><strong>Notes:</strong><p>{entry.physicianNotes}</p></div>)}
+                        <tr className="detail-row"><td colSpan={6}>
+                          <div className="detail-content">
+                            <div className="detail-grid">
+                              <div className="detail-item"><span className="detail-label">Retention 1h:</span><span>{entry.retention1h ?? '—'}%</span></div>
+                              <div className="detail-item"><span className="detail-label">Retention 2h:</span><span>{entry.retention2h ?? '—'}%</span></div>
+                              <div className="detail-item"><span className="detail-label">Retention 4h:</span><span>{entry.retention4h ?? '—'}%</span></div>
+                              <div className="detail-item"><span className="detail-label">Rapid Emptying:</span><span>{entry.rapidEmptying ? 'Yes' : 'No'}</span></div>
+                              <div className="detail-item"><span className="detail-label">Reflux:</span><span>{entry.refluxSign ? 'Yes' : 'No'}</span></div>
+                              <div className="detail-item"><span className="detail-label">Aspiration:</span><span>{entry.aspirationSign ? 'Yes' : 'No'}</span></div>
                             </div>
-                          </td>
-                        </tr>
+                            {entry.impression && <div className="detail-text"><strong>Impression:</strong><p>{entry.impression}</p></div>}
+                          </div>
+                        </td></tr>
                       )}
                     </React.Fragment>
                   ))}

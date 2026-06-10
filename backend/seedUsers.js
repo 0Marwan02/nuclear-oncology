@@ -11,8 +11,6 @@ const USERS = [
   { hospitalId: 'NRS-002', name: 'سارة محمود', role: 'nurse', password: 'nurse123', nationalId: '29612126789015', phone: '01200000002', gender: 'Female', birthDate: new Date('1996-12-12') },
   { hospitalId: 'TEC-001', name: 'عمرو حسن', role: 'technician', password: 'tech123', nationalId: '29208177890121', phone: '01500000001', gender: 'Male', birthDate: new Date('1992-08-17') },
   { hospitalId: 'TEC-002', name: 'مصطفى كمال', role: 'technician', password: 'tech123', nationalId: '29109238901231', phone: '01500000002', gender: 'Male', birthDate: new Date('1991-09-23') },
-  { hospitalId: 'REC-001', name: 'هدى عبدالله', role: 'reception', password: 'rec123', nationalId: '29404019012342', phone: '01000000010', gender: 'Female', birthDate: new Date('1994-04-01') },
-  { hospitalId: 'REC-002', name: 'منى السيد', role: 'reception', password: 'rec123', nationalId: '29706150123452', phone: '01000000011', gender: 'Female', birthDate: new Date('1997-06-15') },
   { hospitalId: 'BLK-001', name: 'حسام إبراهيم', role: 'nurse', password: 'blk123', nationalId: '29302281234561', phone: '01200000099', gender: 'Male', birthDate: new Date('1993-02-28'), isActive: false },
 ];
 

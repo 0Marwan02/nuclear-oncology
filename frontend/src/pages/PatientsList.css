@@ -4,6 +4,55 @@
   gap: 24px;
 }
 
+.filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filter-chip button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+}
+
+.filter-chip button:hover { color: #1d4ed8; }
+
+.filter-clear {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.filter-clear:hover { background: #f3f4f6; color: #111827; }
+
+.category-tag {
+  font-weight: 600;
+  color: #7c3aed;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -27,17 +76,45 @@
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 180ms ease, transform 180ms var(--ease-out, cubic-bezier(0.23,1,0.32,1));
 }
 
-.btn-primary:hover {
-  background: #1d4ed8;
+.btn-primary:active { transform: scale(0.97); }
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover { background: #1d4ed8; }
+}
+
+.patients-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .search-bar {
   position: relative;
   width: 100%;
   max-width: 400px;
+  flex: 1 1 280px;
+}
+
+.category-filter-select {
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.category-filter-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-icon {
@@ -55,7 +132,7 @@
   border-radius: 10px;
   font-size: 15px;
   outline: none;
-  transition: all 0.2s;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .search-bar input:focus {
@@ -75,13 +152,30 @@
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 200ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)),
+              box-shadow 200ms ease,
+              border-color 200ms ease;
+  animation: pcard-in calc(220ms + var(--stagger, 0ms)) var(--ease-out, cubic-bezier(0.23,1,0.32,1)) both;
 }
 
-.patient-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  border-color: #bfdbfe;
+.patient-card:nth-child(1) { --stagger: 0ms;   }
+.patient-card:nth-child(2) { --stagger: 40ms;  }
+.patient-card:nth-child(3) { --stagger: 80ms;  }
+.patient-card:nth-child(4) { --stagger: 120ms; }
+.patient-card:nth-child(5) { --stagger: 160ms; }
+.patient-card:nth-child(6) { --stagger: 200ms; }
+
+@keyframes pcard-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .patient-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px -6px rgba(0,0,0,0.12);
+    border-color: #bfdbfe;
+  }
 }
 
 .card-header {

@@ -1,0 +1,61 @@
+.scan-report {
+  background: #fff;
+  border: 1px solid #e8eaed;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 14px 0;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+/* Letterhead */
+.sr-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: #fff;
+}
+.sr-head-left { display: flex; flex-direction: column; gap: 8px; }
+.sr-type-badge {
+  width: fit-content; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.18); padding: 4px 11px; border-radius: 999px;
+}
+.sr-doc-title { margin: 0; font-size: 17px; font-weight: 600; }
+.sr-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; text-align: right; }
+.sr-patient-name { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; }
+.sr-patient-meta { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #cbd5e1; }
+
+/* Sections */
+.sr-section { padding: 14px 18px; border-top: 1px solid #f1f3f5; }
+.sr-section:first-of-type { border-top: none; }
+.sr-section-title {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: #6366f1; margin-bottom: 12px;
+}
+
+.sr-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px 18px;
+}
+.sr-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sr-item.wide { grid-column: 1 / -1; }
+.sr-label {
+  font-size: 11px; color: #98a2b3; text-transform: uppercase; letter-spacing: 0.03em;
+}
+.sr-value { font-size: 14px; color: #1f2937; font-weight: 500; word-break: break-word; line-height: 1.45; }
+.sr-item.wide .sr-value { font-weight: 400; }
+
+/* Impression block */
+.sr-impression {
+  padding: 14px 18px; border-top: 1px solid #f1f3f5; background: #fafbff;
+}
+.sr-impression p {
+  margin: 0; font-size: 14px; line-height: 1.55; color: #374151;
+  padding: 10px 12px; background: #fff; border: 1px solid #e8eaed; border-radius: 9px;
+  border-left: 3px solid #6366f1;
+}
+
+@media (max-width: 560px) {
+  .sr-head { flex-direction: column; }
+  .sr-head-right { align-items: flex-start; text-align: left; }
+  .sr-grid { grid-template-columns: 1fr 1fr; }
+}

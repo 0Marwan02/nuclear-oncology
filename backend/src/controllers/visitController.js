@@ -34,7 +34,7 @@ const createVisit = async (req, res) => {
           generalCondition: generalCondition || null,
           doctorNotes: req.user.role === 'doctor' ? doctorNotes || null : null,
           nurseNotes: nurseNotes || null,
-          workflowStatus: 'Registered',
+          workflowStatus: 'Pending_Doctor',
           recordedBy: req.user.id
         }
       });

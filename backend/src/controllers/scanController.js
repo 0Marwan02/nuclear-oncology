@@ -8,9 +8,9 @@ const scanInclude = {
   reporter: { select: { id: true, name: true, hospitalId: true } }
 };
 
-const withRoleClinical = (req, data) => ({
+const withRoleClinical = (req, modelName, data) => ({
   ...data,
-  ...filterBodyByRole(req.body, req.user?.role || 'guest'),
+  ...filterBodyByRole(req.body, req.user?.role || 'guest', modelName),
 });
 
 // ===== PET-CT =====
@@ -30,7 +30,7 @@ const createPETCT = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanPETCT.create({
         data: {
-          ...pickClinicalFields(req.body),
+          ...pickClinicalFields(req.body, 'ScanPETCT'),
           patientId, visitId, referralReason, fdgDoseMCi: fdgDoseMCi ?? req.body.fdgDose,
           injectionTime: injectionTime ? new Date(injectionTime) : null,
           scanTime: scanTime ? new Date(scanTime) : null,
@@ -39,7 +39,7 @@ const createPETCT = async (req, res) => {
           metastasisSign: metastasisSign ?? req.body.metastasisPresent ?? false,
           metastasisDetails, impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Registered',
+          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
         },
         include: scanInclude
       });
@@ -102,7 +102,7 @@ const updatePETCT = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanPETCT.update({
         where: { id: req.params.id },
-        data: withRoleClinical(req, {
+        data: withRoleClinical(req, 'ScanPETCT', {
           visitId, referralReason, fdgDoseMCi,
           injectionTime: injectionTime ? new Date(injectionTime) : undefined,
           scanTime: scanTime ? new Date(scanTime) : undefined,
@@ -165,8 +165,8 @@ const createPSMAPETCT = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanPSMAPETCT.create({
         data: {
-          ...pickClinicalFields(req.body),
-          patientId, visitId, psaLevel, gleasonScore, ga68DoseMCi: ga68DoseMCi ?? req.body.ga68Dose,
+          ...pickClinicalFields(req.body, 'ScanPSMAPETCT'),
+          patientId, visitId, gleasonScore, ga68DoseMCi: ga68DoseMCi ?? req.body.ga68Dose,
           injectionTime: injectionTime ? new Date(injectionTime) : null,
           scanTime: scanTime ? new Date(scanTime) : null,
           uptakeTime,
@@ -176,7 +176,7 @@ const createPSMAPETCT = async (req, res) => {
           visceralMetastasis: visceralMetastasis ?? false,
           lesionLocations, psmaExpression, impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Registered',
+          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
         },
         include: scanInclude
       });
@@ -239,7 +239,7 @@ const updatePSMAPETCT = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanPSMAPETCT.update({
         where: { id: req.params.id },
-        data: withRoleClinical(req, {
+        data: withRoleClinical(req, 'ScanPSMAPETCT', {
           visitId, psaLevel, gleasonScore, ga68DoseMCi,
           injectionTime: injectionTime ? new Date(injectionTime) : undefined,
           scanTime: scanTime ? new Date(scanTime) : undefined,
@@ -303,7 +303,7 @@ const createThyroid = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanThyroid.create({
         data: {
-          ...pickClinicalFields(req.body),
+          ...pickClinicalFields(req.body, 'ScanThyroid'),
           patientId, visitId, isotopeType, isotopeDoseMCi: isotopeDoseMCi ?? req.body.isotopeDose,
           injectionTime: injectionTime ? new Date(injectionTime) : null,
           scanTime: scanTime ? new Date(scanTime) : null,
@@ -315,7 +315,7 @@ const createThyroid = async (req, res) => {
           diagramData: typeof diagramData === 'object' ? JSON.stringify(diagramData) : diagramData,
           impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Registered',
+          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
         },
         include: scanInclude
       });
@@ -379,7 +379,7 @@ const updateThyroid = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanThyroid.update({
         where: { id: req.params.id },
-        data: withRoleClinical(req, {
+        data: withRoleClinical(req, 'ScanThyroid', {
           visitId, isotopeType, isotopeDoseMCi,
           injectionTime: injectionTime ? new Date(injectionTime) : undefined,
           scanTime: scanTime ? new Date(scanTime) : undefined,
@@ -445,7 +445,7 @@ const createBone = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanBone.create({
         data: {
-          ...pickClinicalFields(req.body),
+          ...pickClinicalFields(req.body, 'ScanBone'),
           patientId, visitId, primaryCancer, tc99mDoseMCi: tc99mDoseMCi ?? req.body.tc99mDose,
           injectionTime: injectionTime ? new Date(injectionTime) : null,
           scanTime: scanTime ? new Date(scanTime) : null,
@@ -458,7 +458,7 @@ const createBone = async (req, res) => {
           degenerativeChanges: degenerativeChanges ?? false,
           traumaSites, impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Registered',
+          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
         },
         include: scanInclude
       });
@@ -522,7 +522,7 @@ const updateBone = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanBone.update({
         where: { id: req.params.id },
-        data: withRoleClinical(req, {
+        data: withRoleClinical(req, 'ScanBone', {
           visitId, primaryCancer, tc99mDoseMCi,
           injectionTime: injectionTime ? new Date(injectionTime) : undefined,
           scanTime: scanTime ? new Date(scanTime) : undefined,
@@ -588,7 +588,7 @@ const createRenal = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanRenal.create({
         data: {
-          ...pickClinicalFields(req.body),
+          ...pickClinicalFields(req.body, 'ScanRenal'),
           patientId, visitId, scanType, tc99mDoseMCi: tc99mDoseMCi ?? req.body.tc99mDose,
           injectionTime: injectionTime ? new Date(injectionTime) : null,
           scanTime: scanTime ? new Date(scanTime) : null,
@@ -602,7 +602,7 @@ const createRenal = async (req, res) => {
           corticalScarring: corticalScarring ?? false,
           impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Registered',
+          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
         },
         include: scanInclude
       });
@@ -667,7 +667,7 @@ const updateRenal = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanRenal.update({
         where: { id: req.params.id },
-        data: withRoleClinical(req, {
+        data: withRoleClinical(req, 'ScanRenal', {
           visitId, scanType, tc99mDoseMCi,
           injectionTime: injectionTime ? new Date(injectionTime) : undefined,
           scanTime: scanTime ? new Date(scanTime) : undefined,
@@ -735,7 +735,7 @@ const createGastric = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanGastric.create({
         data: {
-          ...pickClinicalFields(req.body),
+          ...pickClinicalFields(req.body, 'ScanGastric'),
           patientId, visitId, mealType, tc99mDoseMCi: tc99mDoseMCi ?? req.body.tc99mDose,
           ingestionTime: ingestionTime ? new Date(ingestionTime) : null,
           scanStartTime: scanStartTime ? new Date(scanStartTime) : null,
@@ -747,7 +747,7 @@ const createGastric = async (req, res) => {
           aspirationSign: aspirationSign ?? false,
           impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Registered',
+          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
         },
         include: scanInclude
       });
@@ -811,7 +811,7 @@ const updateGastric = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanGastric.update({
         where: { id: req.params.id },
-        data: withRoleClinical(req, {
+        data: withRoleClinical(req, 'ScanGastric', {
           visitId, mealType, tc99mDoseMCi,
           ingestionTime: ingestionTime ? new Date(ingestionTime) : undefined,
           scanStartTime: scanStartTime ? new Date(scanStartTime) : undefined,
@@ -875,7 +875,7 @@ const createMeckel = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanMeckel.create({
         data: {
-          ...pickClinicalFields(req.body),
+          ...pickClinicalFields(req.body, 'ScanMeckel'),
           patientId, visitId, complaint, diagnosis, bleedingHistory,
           tc99mDoseMCi: tc99mDoseMCi ?? req.body.tc99mDose,
           injectionTime: injectionTime ? new Date(injectionTime) : null,
@@ -884,7 +884,7 @@ const createMeckel = async (req, res) => {
           uptakeLocation,
           impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Registered',
+          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
         },
         include: scanInclude,
       });
@@ -938,7 +938,7 @@ const updateMeckel = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const scan = await tx.scanMeckel.update({
         where: { id: req.params.id },
-        data: withRoleClinical(req, {
+        data: withRoleClinical(req, 'ScanMeckel', {
           fileUrl,
           injectionTime: body.injectionTime ? new Date(body.injectionTime) : undefined,
           scanTime: body.scanTime ? new Date(body.scanTime) : undefined,
@@ -975,6 +975,40 @@ const getMeckelHistory = async (req, res) => {
     return res.json(scans);
   } catch (error) {
     return res.status(500).json({ message: 'Failed to get Meckel history', error: error.message });
+  }
+};
+
+// ===== Aggregate — all scan types for one patient =====
+
+const SCAN_MODELS = {
+  petct: 'scanPETCT',
+  psma: 'scanPSMAPETCT',
+  thyroid: 'scanThyroid',
+  bone: 'scanBone',
+  renal: 'scanRenal',
+  gastric: 'scanGastric',
+  meckel: 'scanMeckel',
+};
+
+// GET /scans/all/patient/:patientId — every scan record for a patient, across
+// all 7 modalities, flattened and tagged with `scanType`/`type`/`date`.
+const getAllScansForPatient = async (req, res) => {
+  const { patientId } = req.params;
+  try {
+    const grouped = await Promise.all(
+      Object.entries(SCAN_MODELS).map(async ([type, model]) => {
+        const rows = await prisma[model].findMany({
+          where: { patientId },
+          orderBy: { createdAt: 'desc' },
+          include: scanInclude,
+        });
+        return rows.map((r) => ({ ...r, scanType: type, type, date: r.createdAt }));
+      })
+    );
+    const flat = grouped.flat().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return res.json(flat);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to get patient scan history', error: error.message });
   }
 };
 
@@ -1017,5 +1051,6 @@ module.exports = {
   createRenal, getRenals, getRenal, updateRenal, getRenalHistory,
   createGastric, getGastrics, getGastric, updateGastric, getGastricHistory,
   createMeckel, getMeckels, getMeckel, updateMeckel, getMeckelHistory,
+  getAllScansForPatient,
   getScanStats,
 };

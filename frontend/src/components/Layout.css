@@ -14,19 +14,26 @@
 }
 
 .sidebar-brand {
-  padding: 24px;
+  padding: 20px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid #f3f4f6;
+  gap: 8px;
 }
 
 .sidebar-brand h2 {
-  margin: 0;
-  font-size: 22px;
+  margin: 0 0 2px;
+  font-size: 20px;
   color: #1a1b1f;
   font-weight: 700;
   letter-spacing: -0.5px;
+}
+
+.sidebar-subtitle {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 400;
 }
 
 .role-badge {
@@ -57,22 +64,21 @@
   text-decoration: none;
   font-weight: 500;
   font-size: 15px;
-  transition: all 0.2s ease;
+  transition: background 150ms ease, color 150ms ease;
 }
 
-.nav-item:hover {
-  background: #f3f4f6;
-  color: #1f2937;
+@media (hover: hover) and (pointer: fine) {
+  .nav-item:hover { background: #f3f4f6; color: #1f2937; }
 }
+
+.nav-item:active { transform: scale(0.98); }
 
 .nav-item.active {
   background: #eff6ff;
   color: #2563eb;
 }
 
-.nav-item.active svg {
-  color: #2563eb;
-}
+.nav-item.active svg { color: #2563eb; }
 
 .sidebar-footer {
   padding: 16px;
@@ -91,6 +97,29 @@
   font-weight: 600;
 }
 
+.lang-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px;
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 150ms ease, transform 180ms var(--ease-out, cubic-bezier(0.23,1,0.32,1));
+}
+
+.lang-toggle-btn:active { transform: scale(0.97); }
+
+@media (hover: hover) and (pointer: fine) {
+  .lang-toggle-btn:hover { background: #e0f2fe; }
+}
+
 .logout-btn {
   display: flex;
   align-items: center;
@@ -104,11 +133,13 @@
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 150ms ease, transform 180ms var(--ease-out, cubic-bezier(0.23,1,0.32,1));
 }
 
-.logout-btn:hover {
-  background: #fecaca;
+.logout-btn:active { transform: scale(0.97); }
+
+@media (hover: hover) and (pointer: fine) {
+  .logout-btn:hover { background: #fecaca; }
 }
 
 .main-content {
@@ -148,12 +179,11 @@
   cursor: pointer;
   padding: 6px 12px;
   border-radius: 8px;
-  transition: all 0.2s;
+  transition: background 150ms ease, color 150ms ease;
 }
 
-.header-search-hint:hover {
-  background: #f3f4f6;
-  color: #6b7280;
+@media (hover: hover) and (pointer: fine) {
+  .header-search-hint:hover { background: #f3f4f6; color: #6b7280; }
 }
 
 .header-kbd {
@@ -190,7 +220,7 @@
   text-decoration: none;
   font-weight: 500;
   font-size: 15px;
-  transition: all 0.2s ease;
+  transition: background 150ms ease, color 150ms ease;
   background: none;
   border: none;
   width: 100%;
@@ -199,10 +229,11 @@
   text-align: left;
 }
 
-.nav-submenu-toggle:hover {
-  background: #f3f4f6;
-  color: #1f2937;
+@media (hover: hover) and (pointer: fine) {
+  .nav-submenu-toggle:hover { background: #f3f4f6; color: #1f2937; }
 }
+
+.nav-submenu-toggle:active { transform: scale(0.98); }
 
 .nav-submenu-toggle.open {
   background: #eff6ff;
@@ -237,12 +268,11 @@
   text-decoration: none;
   font-weight: 400;
   font-size: 14px;
-  transition: all 0.2s ease;
+  transition: background 150ms ease, color 150ms ease;
 }
 
-.submenu-item:hover {
-  background: #f3f4f6;
-  color: #1f2937;
+@media (hover: hover) and (pointer: fine) {
+  .submenu-item:hover { background: #f3f4f6; color: #1f2937; }
 }
 
 .submenu-item.active {

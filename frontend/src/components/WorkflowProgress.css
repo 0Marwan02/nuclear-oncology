@@ -1,35 +1,61 @@
 .workflow-progress {
   display: flex;
-  gap: 0.5rem;
-  margin: 1rem 0;
+  align-items: center;
+  gap: 0;
+  margin: 12px 0;
   flex-wrap: wrap;
 }
 
 .wf-step {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.85rem;
-  color: var(--text-muted, #64748b);
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted, #9ca3af);
+}
+
+.wf-step + .wf-step::before {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: #e2e8f0;
+  margin: 0 2px 0 0;
+  border-radius: 1px;
+}
+
+.wf-step.done + .wf-step::before  { background: #16a34a; }
+.wf-step.active + .wf-step::before { background: #93c5fd; }
+
+.wf-step.done   { color: #16a34a; }
+.wf-step.active { color: #2563eb; font-weight: 700; }
+
+.wf-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #9ca3af;
+  transition: background 220ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)),
+              color 220ms ease,
+              transform 220ms var(--ease-out, cubic-bezier(0.23,1,0.32,1));
 }
 
 .wf-step.done .wf-dot {
   background: #16a34a;
   color: #fff;
+  transform: scale(1.05);
 }
 
 .wf-step.active .wf-dot {
   background: #2563eb;
   color: #fff;
-}
-
-.wf-dot {
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  background: #e2e8f0;
+  transform: scale(1.1);
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.15);
 }
