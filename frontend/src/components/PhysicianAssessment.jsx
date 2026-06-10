@@ -28,7 +28,7 @@ const PhysicianAssessment = ({ visit, onDone, onNavigateClinic }) => {
   const patient = visit.patient || {};
   const patientId = visit.patientId || patient.id;
 
-  const [path, setPath] = useState('scan'); // 'scan' | 'clinic_green' | 'clinic_red'
+  const [path, setPath] = useState('scan'); // 'scan' | 'thyroid_cancer' | 'thyroid_disease'
   const [scanType, setScanType] = useState('');
   const [form, setForm] = useState({ isotopeType: 'Tc-99m', scanType: 'DTPA' });
   const [diagramData, setDiagramData] = useState(null);
@@ -47,12 +47,10 @@ const PhysicianAssessment = ({ visit, onDone, onNavigateClinic }) => {
     setError('');
 
     if (path !== 'scan') {
-      // Continuous-care path: mark the encounter assessed and hand off to the
-      // existing clinic file pages.
       setSubmitting(true);
       try {
         await advanceWorkflow('visit', visit.id, { workflowStatus: 'Assessed' });
-        onNavigateClinic?.(path === 'clinic_green' ? 'green' : 'red', patient);
+        onNavigateClinic?.(path === 'thyroid_cancer' ? 'thyroid-cancer' : 'thyroid-disease', patient);
         onDone?.();
       } catch (err) {
         setError(err.message || 'فشل في فتح ملف العيادة');
@@ -73,6 +71,12 @@ const PhysicianAssessment = ({ visit, onDone, onNavigateClinic }) => {
         patientId,
         visitId: visit.id,
         workflowStatus: 'Assessed',
+        // Copy nurse prep data from visit so technician can see it on the scan record.
+        prepWeight: visit.weight ?? undefined,
+        prepHeight: visit.height ?? undefined,
+        prepBloodGlucose: visit.bloodGlucose ?? undefined,
+        injectionSite: visit.injectionSite ?? undefined,
+        pregnancyStatus: visit.pregnancyStatus ?? undefined,
       };
       if (scanType === 'thyroid') base.isotopeType = form.isotopeType || 'Tc-99m';
       if (scanType === 'renal') base.scanType = form.scanType || 'DTPA';
@@ -97,8 +101,8 @@ const PhysicianAssessment = ({ visit, onDone, onNavigateClinic }) => {
         <label>المسار</label>
         <div className="path-buttons">
           <button type="button" className={path === 'scan' ? 'active' : ''} onClick={() => setPath('scan')}>فحص ذري</button>
-          <button type="button" className={path === 'clinic_green' ? 'active' : ''} onClick={() => setPath('clinic_green')}>عيادة — ملف أخضر</button>
-          <button type="button" className={path === 'clinic_red' ? 'active' : ''} onClick={() => setPath('clinic_red')}>عيادة — ملف أحمر</button>
+          <button type="button" className={path === 'thyroid_cancer' ? 'active' : ''} onClick={() => setPath('thyroid_cancer')}>عيادة — سرطان الغدة</button>
+          <button type="button" className={path === 'thyroid_disease' ? 'active' : ''} onClick={() => setPath('thyroid_disease')}>عيادة — أمراض الغدة</button>
         </div>
       </div>
 
@@ -152,7 +156,7 @@ const PhysicianAssessment = ({ visit, onDone, onNavigateClinic }) => {
 
       <button type="button" className="btn-assess" onClick={handleConfirm} disabled={submitting}>
         {path === 'scan' ? <CheckCircle size={18} /> : <Stethoscope size={18} />}
-        {submitting ? 'جاري الحفظ...' : (path === 'scan' ? 'تأكيد التقييم وإرسال للتمريض' : 'فتح ملف العيادة')}
+        {submitting ? 'جاري الحفظ...' : (path === 'scan' ? 'تأكيد التقييم وإرسال للفني' : 'فتح ملف العيادة')}
       </button>
     </div>
   );

@@ -1,228 +1,664 @@
 /**
- * Comprehensive demo seed for the Sequential Station Flow.
+ * seedDemo.js — Full demonstration data for Nuclear Oncology System
+ * Covers: all 7 scan types, all workflow stages, all edge-case gates,
+ *         all new form fields (HTN/DM, multiple markers, G-CSF notes, etc.)
  *
- * Populates every station queue and every edge case so each role sees a
- * realistic dashboard on login:
- *   - Physician assessment queue : Visits  (workflowStatus 'Registered')
- *   - Nurse queue                : Scans   ('Assessed')
- *   - Technician queue           : Scans   ('Prepared')  + safety-gate cases
- *   - Physician reporting queue  : Scans   ('Scanned')
- *   - History / comparison       : Scans   ('Completed') — multiple per patient
- *   - Clinic green/red files, medical cases, appointments (upcoming + overdue)
- *
- * Idempotent: re-running wipes only the DEMO patients' transactional records
- * (scoped by nationalId) and rebuilds them. Users are (re)seeded via seedUsers.
- *
- * Run:  node seedDemo.js
+ * Run: node seedDemo.js
+ * Idempotent: upserts users, deletes+recreates demo patients/scans.
  */
+
 const { PrismaClient } = require('@prisma/client');
-const { seedUsers } = require('./seedUsers');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
-const d = (s) => new Date(s);
-const daysFromNow = (n) => new Date(Date.now() + n * 86400000);
-
-// ─── Demo patients (recognizable 3000/2900 nationalIds) ──────────────────────
-const PATIENTS = [
-  { nationalId: '30001011111111', name: 'كريم فؤاد',      gender: 'Male',   birthDate: '1980-01-01', phone: '01000000101', address: 'أسيوط - حي شرق',   bloodType: 'A+',  maritalStatus: 'Married' },
-  { nationalId: '29502022222222', name: 'هالة سمير',      gender: 'Female', birthDate: '1985-02-02', phone: '01000000102', address: 'أسيوط - حي غرب',   bloodType: 'O+',  maritalStatus: 'Married' },
-  { nationalId: '28803033333333', name: 'وليد ناصر',      gender: 'Male',   birthDate: '1968-03-03', phone: '01000000103', address: 'سوهاج',            bloodType: 'B+',  maritalStatus: 'Married' },
-  { nationalId: '29904044444444', name: 'سلمى عادل',      gender: 'Female', birthDate: '1989-04-04', phone: '01000000104', address: 'قنا',              bloodType: 'AB+', maritalStatus: 'Single'  },
-  { nationalId: '30205055555555', name: 'يوسف جمال',      gender: 'Male',   birthDate: '1992-05-05', phone: '01000000105', address: 'الأقصر',           bloodType: 'O-',  maritalStatus: 'Married' },
-  { nationalId: '29006066666666', name: 'دعاء راضي',      gender: 'Female', birthDate: '1990-06-06', phone: '01000000106', address: 'أسيوط - المنشاة',  bloodType: 'A-',  maritalStatus: 'Married' },
-  { nationalId: '30307077777777', name: 'عمر هشام',       gender: 'Male',   birthDate: '2003-07-07', phone: '01000000107', address: 'المنيا',           bloodType: 'B-',  maritalStatus: 'Single'  },
-  { nationalId: '29708088888888', name: 'ريم طارق',       gender: 'Female', birthDate: '1987-08-08', phone: '01000000108', address: 'أسيوط - أبنوب',    bloodType: 'A+',  maritalStatus: 'Married' },
-  { nationalId: '28509099999999', name: 'أنس كمال',       gender: 'Male',   birthDate: '1965-09-09', phone: '01000000109', address: 'أسيوط - البداري',  bloodType: 'O+',  maritalStatus: 'Widowed' },
-  { nationalId: '29610101010101', name: 'ليلى فهمي',      gender: 'Female', birthDate: '1986-10-10', phone: '01000000110', address: 'أسيوط - منفلوط',   bloodType: 'AB-', maritalStatus: 'Married' },
-  { nationalId: '30011111212121', name: 'محمد صبري',      gender: 'Male',   birthDate: '1994-11-11', phone: '01000000111', address: 'أسوان',            bloodType: 'A+',  maritalStatus: 'Single'  },
-  { nationalId: '29712121313131', name: 'نهى رأفت',       gender: 'Female', birthDate: '1979-12-12', phone: '01000000112', address: 'أسيوط - ساحل سليم', bloodType: 'B+',  maritalStatus: 'Married' },
-  { nationalId: '29013141414141', name: 'سمر عاطف',       gender: 'Female', birthDate: '1993-01-14', phone: '01000000113', address: 'أسيوط - ديروط',    bloodType: 'O+',  maritalStatus: 'Single'  },
+// ─── USERS ────────────────────────────────────────────────────────────────────
+const USERS = [
+  { hospitalId: 'ADM-001', name: 'د. أحمد سعيد',        role: 'admin',      password: 'admin123', gender: 'Male',   birthDate: new Date('1980-03-15'), nationalId: '28003152301011', phone: '01000000001' },
+  { hospitalId: 'DOC-001', name: 'د. محمد عبدالرحمن',   role: 'doctor',     password: 'doc123',   gender: 'Male',   birthDate: new Date('1982-07-22'), nationalId: '28207222401031', phone: '01100000001' },
+  { hospitalId: 'DOC-002', name: 'د. فاطمة الزهراء',    role: 'doctor',     password: 'doc123',   gender: 'Female', birthDate: new Date('1986-11-05'), nationalId: '28611052601052', phone: '01100000002' },
+  { hospitalId: 'DOC-003', name: 'د. خالد مصطفى',       role: 'doctor',     password: 'doc123',   gender: 'Male',   birthDate: new Date('1979-09-30'), nationalId: '27909302501073', phone: '01100000003' },
+  { hospitalId: 'NRS-001', name: 'نورهان أحمد',          role: 'nurse',      password: 'nurse123', gender: 'Female', birthDate: new Date('1995-04-18'), nationalId: '29504182601094', phone: '01200000001' },
+  { hospitalId: 'NRS-002', name: 'سارة محمود',           role: 'nurse',      password: 'nurse123', gender: 'Female', birthDate: new Date('1997-08-09'), nationalId: '29708092701115', phone: '01200000002' },
+  { hospitalId: 'TEC-001', name: 'عمرو حسن',             role: 'technician', password: 'tech123',  gender: 'Male',   birthDate: new Date('1993-02-14'), nationalId: '29302142801131', phone: '01500000001' },
+  { hospitalId: 'TEC-002', name: 'مصطفى كمال',           role: 'technician', password: 'tech123',  gender: 'Male',   birthDate: new Date('1990-06-27'), nationalId: '29006272901152', phone: '01500000002' },
+  { hospitalId: 'BLK-001', name: 'حسام إبراهيم',         role: 'nurse',      password: 'blk123',   gender: 'Male',   birthDate: new Date('1991-12-03'), nationalId: '29112032501173', phone: '01200000099', isActive: false },
 ];
 
-async function getUsers() {
-  const all = await prisma.user.findMany();
-  const m = {};
-  all.forEach((u) => (m[u.hospitalId] = u.id));
-  return m;
-}
+// ─── DEMO PATIENTS ─────────────────────────────────────────────────────────────
+// nationalId format: first digit=century(2=1900s,3=2000s), next 6=YYMMDD, 2=gov, 3=seq, last=check
+const PATIENTS = [
+  // PET/CT patients
+  { nationalId: '29506153301011', name: 'كريم فؤاد',      gender: 'Male',   birthDate: new Date('1995-06-15'), phone: '01011100001', bloodType: 'A+',  address: 'أسيوط — شارع الجمهورية', scenario: 'petct_history' },
+  { nationalId: '29210224401022', name: 'هالة سمير',      gender: 'Female', birthDate: new Date('1992-10-22'), phone: '01011100002', bloodType: 'B+',  address: 'أسيوط — حي الضبعية',    scenario: 'petct_glucose_gate' },
+  { nationalId: '29809073501033', name: 'سمر عاطف',       gender: 'Female', birthDate: new Date('1998-09-07'), phone: '01011100003', bloodType: 'O+',  address: 'أسيوط — الدراج',         scenario: 'petct_contraception_gate' },
+  { nationalId: '29407184601044', name: 'ليلى فهمي',      gender: 'Female', birthDate: new Date('1994-07-18'), phone: '01011100004', bloodType: 'AB+', address: 'أسيوط — العزيزية',       scenario: 'petct_gate_passes' },
+  { nationalId: '29601253301055', name: 'مجدي رضا',       gender: 'Male',   birthDate: new Date('1966-01-25'), phone: '01011100005', bloodType: 'A-',  address: 'أسيوط — منفلوط',          scenario: 'petct_htn_dm_markers' },
+  { nationalId: '29304264401066', name: 'نادية إبراهيم',  gender: 'Female', birthDate: new Date('1973-04-26'), phone: '01011100006', bloodType: 'O-',  address: 'أسيوط — أبو تيج',         scenario: 'petct_gcsf_warning' },
+  { nationalId: '29108123501077', name: 'طارق عبدالله',   gender: 'Male',   birthDate: new Date('1961-08-12'), phone: '01011100007', bloodType: 'B-',  address: 'أسيوط — ديروط',           scenario: 'petct_resus_renal' },
+  // PSMA patients
+  { nationalId: '29703094601088', name: 'وليد ناصر',      gender: 'Male',   birthDate: new Date('1957-03-09'), phone: '01011100008', bloodType: 'A+',  address: 'أسيوط — القوصية',         scenario: 'psma_high_psa' },
+  { nationalId: '29011073301099', name: 'يوسف حسين',      gender: 'Male',   birthDate: new Date('1970-11-07'), phone: '01011100009', bloodType: 'O+',  address: 'أسيوط — البداري',          scenario: 'psma_comparison' },
+  { nationalId: '29512304401100', name: 'سامي الشريف',    gender: 'Male',   birthDate: new Date('1955-12-30'), phone: '01011100010', bloodType: 'B+',  address: 'أسيوط — الفتح',            scenario: 'psma_dm_htn' },
+  // Thyroid patients
+  { nationalId: '29203173501111', name: 'سلمى عادل',      gender: 'Female', birthDate: new Date('1992-03-17'), phone: '01011100011', bloodType: 'A+',  address: 'أسيوط — ناصر',             scenario: 'thyroid_med_alert' },
+  { nationalId: '29406224601122', name: 'أنس كمال',       gender: 'Male',   birthDate: new Date('1974-06-22'), phone: '01011100012', bloodType: 'O+',  address: 'أسيوط — دير مواس',          scenario: 'thyroid_wbs_therapeutic' },
+  { nationalId: '29808093301133', name: 'رانيا سامي',     gender: 'Female', birthDate: new Date('1998-08-09'), phone: '01011100013', bloodType: 'B+',  address: 'أسيوط — المنشاة',           scenario: 'thyroid_wbs_diagnostic' },
+  { nationalId: '29105204401144', name: 'محمود صلاح',     gender: 'Male',   birthDate: new Date('1971-05-20'), phone: '01011100014', bloodType: 'AB-', address: 'أسيوط — ساحل سليم',         scenario: 'thyroid_routine_complete' },
+  // Bone scan patients
+  { nationalId: '29602133501155', name: 'حسن علي',        gender: 'Male',   birthDate: new Date('1956-02-13'), phone: '01011100015', bloodType: 'A+',  address: 'أسيوط — مركز أسيوط',        scenario: 'bone_metastasis' },
+  { nationalId: '29704054601166', name: 'مروة جمال',      gender: 'Female', birthDate: new Date('1977-04-05'), phone: '01011100016', bloodType: 'O+',  address: 'أسيوط — الغنايم',            scenario: 'bone_surveillance' },
+  // Renal patients
+  { nationalId: '29309253301177', name: 'عادل منصور',     gender: 'Male',   birthDate: new Date('1966-09-25'), phone: '01011100017', bloodType: 'B+',  address: 'أسيوط — أبنوب',              scenario: 'renal_stenosis' },
+  { nationalId: '29012084401188', name: 'علاء الدين خليل', gender: 'Male',  birthDate: new Date('1980-12-08'), phone: '01011100018', bloodType: 'A+',  address: 'أسيوط — البداري',             scenario: 'renal_transplant' },
+  // Gastric patient
+  { nationalId: '29507313501199', name: 'دينا وهبة',      gender: 'Female', birthDate: new Date('1995-07-31'), phone: '01011100019', bloodType: 'O+',  address: 'أسيوط — منفلوط',             scenario: 'gastric_gastroparesis' },
+  // Meckel's patient
+  { nationalId: '31008154601200', name: 'فريد يوسف',      gender: 'Male',   birthDate: new Date('2010-08-15'), phone: '01011100020', bloodType: 'B+',  address: 'أسيوط — القوصية',            scenario: 'meckel_bleeding' },
+];
 
-async function resetDemoData(demoIds) {
-  if (demoIds.length === 0) return;
-  const where = { patientId: { in: demoIds } };
-
-  // Gather demo visit ids first (children reference visitId, not patientId).
-  const visits = await prisma.visit.findMany({ where, select: { id: true } });
-  const visitIds = visits.map((v) => v.id);
-  const byVisit = { visitId: { in: visitIds } };
-
-  // FK-safe deletion order.
-  if (visitIds.length) {
-    await prisma.labResult.deleteMany({ where: byVisit });
-    await prisma.imagingResult.deleteMany({ where: byVisit });
-    await prisma.radiationDose.deleteMany({ where: byVisit });
-  }
-  await prisma.scanPETCT.deleteMany({ where });
-  await prisma.scanPSMAPETCT.deleteMany({ where });
-  await prisma.scanThyroid.deleteMany({ where });
-  await prisma.scanBone.deleteMany({ where });
-  await prisma.scanRenal.deleteMany({ where });
-  await prisma.scanGastric.deleteMany({ where });
-  await prisma.scanMeckel.deleteMany({ where });
-  await prisma.clinicGreenFile.deleteMany({ where });
-  await prisma.clinicRedFile.deleteMany({ where });
-  await prisma.appointment.deleteMany({ where });
-  await prisma.visit.deleteMany({ where });
-  await prisma.medicalCase.deleteMany({ where });
-}
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const daysAgo  = (n) => new Date(Date.now() - n * 86400000);
+const hoursAgo = (h) => new Date(Date.now() - h * 3600000);
 
 async function main() {
-  console.log('╔════════════════════════════════════════════╗');
-  console.log('║  Nuclear Oncology — Comprehensive Demo Seed  ║');
-  console.log('╚════════════════════════════════════════════╝\n');
+  console.log('\n╔══════════════════════════════════════════════════╗');
+  console.log('║  Nuclear Oncology — Comprehensive Demo Seed       ║');
+  console.log('╚══════════════════════════════════════════════════╝\n');
 
-  await seedUsers();
-  const users = await getUsers();
-  const doc1 = users['DOC-001'];
-  const doc2 = users['DOC-002'] || doc1;
-  const rec1 = users['REC-001'];
-  const tech1 = users['TEC-001'] || doc1;
-  const creator = rec1 || doc1 || Object.values(users)[0];
-  if (!creator) throw new Error('No users found — run seedUsers first.');
+  // ── 1. USERS ──────────────────────────────────────────────────────────────
+  console.log('👥 Seeding users...');
+  const userMap = {};
+  for (const u of USERS) {
+    const hashed = await bcrypt.hash(u.password, 10);
+    const user = await prisma.user.upsert({
+      where: { hospitalId: u.hospitalId },
+      update: { name: u.name, role: u.role, isActive: u.isActive !== false },
+      create: {
+        hospitalId: u.hospitalId, name: u.name, role: u.role,
+        password: hashed, gender: u.gender, birthDate: u.birthDate,
+        nationalId: u.nationalId, phone: u.phone,
+        isActive: u.isActive !== false,
+      },
+    });
+    userMap[u.hospitalId] = user.id;
+    console.log(`  ✅ ${u.hospitalId} — ${u.name} (${u.role})`);
+  }
+  const admin = userMap['ADM-001'];
+  const doc1  = userMap['DOC-001'];
+  const doc2  = userMap['DOC-002'];
+  const doc3  = userMap['DOC-003'];
+  const nur1  = userMap['NRS-001'];
+  const tec1  = userMap['TEC-001'];
 
-  // ── Patients (upsert by nationalId) ──
-  console.log('\n🏥 Patients...');
-  const P = {};
-  for (const p of PATIENTS) {
-    const existing = await prisma.patient.findUnique({ where: { nationalId: p.nationalId } });
-    if (existing) {
-      P[p.nationalId] = existing.id;
-    } else {
-      const created = await prisma.patient.create({
-        data: { ...p, birthDate: d(p.birthDate), createdBy: creator },
-      });
-      P[p.nationalId] = created.id;
+  // ── 2. WIPE DEMO PATIENTS ─────────────────────────────────────────────────
+  console.log('\n🗑  Removing previous demo patient data...');
+  const demoIds = PATIENTS.map(p => p.nationalId);
+  const existing = await prisma.patient.findMany({ where: { nationalId: { in: demoIds } }, select: { id: true } });
+  const existingPatientIds = existing.map(p => p.id);
+  if (existingPatientIds.length > 0) {
+    // Delete scan records first (FK constraint order)
+    for (const model of ['scanPETCT','scanPSMAPETCT','scanThyroid','scanBone','scanRenal','scanGastric','scanMeckel']) {
+      await prisma[model].deleteMany({ where: { patientId: { in: existingPatientIds } } });
     }
-    console.log(`  ✅ ${p.name} (${p.gender})`);
-  }
-  const id = (nid) => P[nid];
-
-  // ── Reset demo transactional data so the seed is idempotent ──
-  console.log('\n🧹 Clearing previous demo records (scoped to demo patients)...');
-  await resetDemoData(Object.values(P));
-
-  // ── Medical cases (cancer patients) ──
-  console.log('\n📋 Medical cases...');
-  const caseLung = await prisma.medicalCase.create({ data: { patientId: id('30001011111111'), diagnosis: 'Lung Adenocarcinoma', cancerType: 'Lung Cancer', cancerStage: 'Stage IIIA', protocolType: 'Chemo + PET Follow-up', startDate: d('2025-10-01'), status: 'Active', createdBy: doc1 } });
-  const caseProstate = await prisma.medicalCase.create({ data: { patientId: id('28803033333333'), diagnosis: 'Prostate Adenocarcinoma', cancerType: 'Prostate Cancer', cancerStage: 'Stage II', protocolType: 'PSMA-targeted', startDate: d('2025-06-10'), status: 'Active', createdBy: doc1 } });
-  const caseThyCa = await prisma.medicalCase.create({ data: { patientId: id('29708088888888'), diagnosis: 'Papillary Thyroid Carcinoma', cancerType: 'Thyroid Cancer', cancerStage: 'Stage I', protocolType: 'Radioiodine Therapy', startDate: d('2025-08-15'), status: 'Active', createdBy: doc2 } });
-  await prisma.medicalCase.create({ data: { patientId: id('28509099999999'), diagnosis: 'Follicular Thyroid Carcinoma', cancerType: 'Thyroid Cancer', cancerStage: 'Stage II', protocolType: 'Post-thyroidectomy I-131', startDate: d('2025-03-01'), status: 'Follow-up', createdBy: doc2 } });
-  console.log('  ✅ 4 cases');
-
-  // ════════════════════════════════════════════════════════════════════════
-  //  STATION 1 → 2 : Reception encounters awaiting physician assessment
-  //  (Visit, workflowStatus 'Registered')  → PHYSICIAN ASSESSMENT QUEUE
-  // ════════════════════════════════════════════════════════════════════════
-  console.log('\n🟦 Assessment queue — Visits (Registered)...');
-  const assessVisits = [
-    { nid: '29006066666666', note: 'ألم بالخاصرة اليمنى ودم في البول — يُحتمل مسح كلى' },
-    { nid: '28509099999999', note: 'متابعة بعد استئصال الغدة — مسح يود مشع' },
-    { nid: '30011111212121', note: 'كتلة رئوية مشتبهة — تحديد المرحلة' },
-    { nid: '29712121313131', note: 'آلام عظام منتشرة — استبعاد ثانويات' },
-  ];
-  for (const v of assessVisits) {
-    await prisma.visit.create({ data: { patientId: id(v.nid), visitDate: new Date(), doctorNotes: v.note, workflowStatus: 'Registered', recordedBy: rec1 || creator } });
-    console.log(`  ✅ Visit Registered — ${v.note.slice(0, 28)}…`);
+    await prisma.visit.deleteMany({ where: { patientId: { in: existingPatientIds } } });
+    await prisma.patient.deleteMany({ where: { id: { in: existingPatientIds } } });
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //  STATION 2 → 3 : Physician assessed, awaiting nurse  ('Assessed')
-  //  → NURSE QUEUE
-  // ════════════════════════════════════════════════════════════════════════
-  console.log('\n🟩 Nurse queue — Scans (Assessed)...');
-  // PET/CT female — nurse must record blood sugar + contraception (LMP)
-  await prisma.scanPETCT.create({ data: { patientId: id('29502022222222'), complaint: 'نقص وزن وتعرق ليلي', diagnosis: 'Lymphoma — staging', referralReason: 'Initial staging', scanPurpose: 'Initial staging', chemoSessions: 0, workflowStatus: 'Assessed', performedBy: doc1 } });
-  // Thyroid with interfering medication → MedicationAlert when viewed
-  await prisma.scanThyroid.create({ data: { patientId: id('29904044444444'), complaint: 'خفقان ورعشة', diagnosis: 'Hyperthyroidism', isotopeType: 'Tc-99m', symptoms: 'palpitations, tremor, weight loss', currentMedications: 'كاربيمازول 20mg', medicationStopped: false, tshLevel: 0.02, t3Level: 8.1, t4Level: 3.0, workflowStatus: 'Assessed', performedBy: doc2 } });
-  // Meckel (paediatric male)
-  await prisma.scanMeckel.create({ data: { patientId: id('30307077777777'), complaint: 'نزيف شرجي غير مؤلم', diagnosis: 'Rule out Meckel diverticulum', bleedingHistory: 'Recurrent painless rectal bleeding', workflowStatus: 'Assessed', performedBy: doc1 } });
-  console.log('  ✅ PET/CT (F), Thyroid (carbimazole), Meckel');
-
-  // ════════════════════════════════════════════════════════════════════════
-  //  STATION 3 → 4 : Nurse prepared, awaiting technician  ('Prepared')
-  //  → TECHNICIAN QUEUE  (incl. safety-gate scenarios)
-  // ════════════════════════════════════════════════════════════════════════
-  console.log('\n🟧 Technician queue — Scans (Prepared)...');
-  // Bone, male, non-PET → technician can complete freely (no gate)
-  await prisma.scanBone.create({ data: { patientId: id('30205055555555'), complaint: 'ألم أسفل الظهر', diagnosis: 'Back pain — screen for mets', scanMode: 'Whole body', painComplaint: 'Lower back, 2 months', prepWeight: 78, prepHeight: 174, prepBloodGlucose: 102, injectionSite: 'right_arm', cannulaSize: '20G', workflowStatus: 'Prepared', performedBy: doc1 } });
-  // PET/CT female, fully prepared (sugar + contraception recorded) → PASSES gate
-  await prisma.scanPETCT.create({ data: { patientId: id('29610101010101'), complaint: 'متابعة استجابة', diagnosis: 'Breast cancer — response', referralReason: 'Response assessment', scanPurpose: 'Post-chemo evaluation', chemoSessions: 6, prepWeight: 70, prepHeight: 162, prepBloodGlucose: 96, injectionSite: 'left_arm', cannulaSize: '22G', pregnancyStatus: 'LMP 2026-05-20 — not pregnant', workflowStatus: 'Prepared', performedBy: doc1 } });
-  // PET/CT female, sugar recorded but NO contraception → technician BLOCKED by gate
-  await prisma.scanPETCT.create({ data: { patientId: id('29013141414141'), complaint: 'تحديد مرحلة', diagnosis: 'Cervical cancer — staging', referralReason: 'Staging', scanPurpose: 'Initial staging', prepWeight: 60, prepHeight: 158, prepBloodGlucose: 92, injectionSite: 'right_arm', cannulaSize: '22G', workflowStatus: 'Prepared', performedBy: doc1 } });
-  console.log('  ✅ Bone (free), PET/CT-F (passes), PET/CT-F (contraception gate blocks)');
-
-  // ════════════════════════════════════════════════════════════════════════
-  //  STATION 4 → 5 : Technician imaged, awaiting physician report  ('Scanned')
-  //  → PHYSICIAN REPORTING QUEUE
-  // ════════════════════════════════════════════════════════════════════════
-  console.log('\n🟪 Reporting queue — Scans (Scanned)...');
-  await prisma.scanPSMAPETCT.create({ data: { patientId: id('28803033333333'), complaint: 'ارتفاع PSA', diagnosis: 'Prostate Adenocarcinoma', psaLevel: 6.2, totalPSA: 6.2, freePSA: 0.9, gleasonScore: '4+3=7', ga68DoseMCi: 5.0, injectionTime: d('2026-05-30T08:00:00'), scanTime: d('2026-05-30T09:00:00'), uptakeTime: 60, prepWeight: 82, prepHeight: 176, prepBloodGlucose: 99, injectionSite: 'right_arm', prostateBedRecurrence: true, lymphNodeInvolvement: true, lesionLocations: 'Prostate bed + pelvic LN', psmaExpression: 'High', workflowStatus: 'Scanned', performedBy: tech1 } });
-  await prisma.scanGastric.create({ data: { patientId: id('29708088888888'), complaint: 'قيء وغثيان بعد الأكل', diagnosis: 'Gastroparesis evaluation', symptoms: 'nausea, early satiety', mealType: 'Solid — egg sandwich', tc99mDoseMCi: 1, ingestionTime: d('2026-05-30T08:00:00'), scanStartTime: d('2026-05-30T08:05:00'), scanDuration: 240, imageInterval: 30, halfEmptyingTime: 175, retention1h: 84, retention2h: 66, retention4h: 41, prepWeight: 64, prepHeight: 159, prepBloodGlucose: 90, workflowStatus: 'Scanned', performedBy: tech1 } });
-  await prisma.scanPETCT.create({ data: { patientId: id('30001011111111'), complaint: 'متابعة سرطان رئة', diagnosis: 'Lung Adenocarcinoma', referralReason: 'Response assessment', scanPurpose: 'Post-chemo evaluation', chemoSessions: 4, fdgDoseMCi: 12.5, injectionTime: d('2026-05-31T08:00:00'), scanTime: d('2026-05-31T09:00:00'), uptakeTime: 60, prepWeight: 74, prepHeight: 170, prepBloodGlucose: 101, bodyRegion: 'Skull base to mid-thigh', suvMax: 4.1, workflowStatus: 'Scanned', performedBy: tech1 } });
-  console.log('  ✅ PSMA, Gastric, PET/CT awaiting report');
-
-  // ════════════════════════════════════════════════════════════════════════
-  //  COMPLETED scans — history & previous-scan comparison
-  //  (≥2 of the same type per patient for the PreviousScanBanner)
-  // ════════════════════════════════════════════════════════════════════════
-  console.log('\n✅ Completed scans (history / comparison)...');
-  // P1 (كريم) — two prior PET/CT → comparison banner on the next PET/CT
-  await prisma.scanPETCT.create({ data: { patientId: id('30001011111111'), complaint: 'تحديد مرحلة أولية', diagnosis: 'Lung Adenocarcinoma', scanPurpose: 'Initial staging', fdgDoseMCi: 12, injectionTime: d('2025-11-10T08:00:00'), scanTime: d('2025-11-10T09:00:00'), prepBloodGlucose: 98, suvMax: 11.2, lesionLocation: 'Right hilar mass + mediastinal LN', metastasisSign: true, metastasisDetails: 'Mediastinal LN', impression: 'Hypermetabolic right hilar mass — baseline staging', workflowStatus: 'Completed', performedBy: tech1, reportedBy: doc1, createdAt: d('2025-11-10T10:00:00') } });
-  await prisma.scanPETCT.create({ data: { patientId: id('30001011111111'), complaint: 'متابعة بعد كيماوي', diagnosis: 'Lung Adenocarcinoma', scanPurpose: 'Interim response', fdgDoseMCi: 12.3, injectionTime: d('2026-02-15T08:00:00'), scanTime: d('2026-02-15T09:00:00'), prepBloodGlucose: 100, suvMax: 6.5, impression: 'Partial metabolic response vs baseline', workflowStatus: 'Completed', performedBy: tech1, reportedBy: doc1, createdAt: d('2026-02-15T10:00:00') } });
-  // P3 (وليد) — prior PSMA completed
-  await prisma.scanPSMAPETCT.create({ data: { patientId: id('28803033333333'), diagnosis: 'Prostate Adenocarcinoma', psaLevel: 4.5, ga68DoseMCi: 5.1, injectionTime: d('2025-12-01T08:00:00'), scanTime: d('2025-12-01T09:00:00'), prostateBedRecurrence: true, psmaExpression: 'High', impression: 'PSMA-avid recurrence in prostate bed', workflowStatus: 'Completed', performedBy: tech1, reportedBy: doc1, createdAt: d('2025-12-01T10:00:00') } });
-  // P5 (يوسف) — prior bone completed
-  await prisma.scanBone.create({ data: { patientId: id('30205055555555'), diagnosis: 'Bone pain — prior study', scanMode: 'Whole body', tc99mDoseMCi: 22, injectionTime: d('2026-01-20T08:30:00'), scanTime: d('2026-01-20T11:30:00'), uptakeTime: 180, skeletalMetastasis: false, degenerativeChanges: true, impression: 'Degenerative changes; no metastasis', workflowStatus: 'Completed', performedBy: tech1, reportedBy: doc1, createdAt: d('2026-01-20T12:00:00') } });
-  // P6 (دعاء) — renal completed (DTPA obstruction)
-  await prisma.scanRenal.create({ data: { patientId: id('29006066666666'), diagnosis: 'Right hydronephrosis', scanType: 'DTPA', renalComplaint: 'Right flank pain', tc99mDoseMCi: 10, injectionTime: d('2026-03-05T09:00:00'), scanTime: d('2026-03-05T09:05:00'), furosemideGiven: true, furosemideTime: d('2026-03-05T09:20:00'), rightKidneyGFR: 34, leftKidneyGFR: 56, rightSplitFunction: 37, leftSplitFunction: 63, obstructionSign: true, impression: 'Right partial obstruction, reduced function (37%)', workflowStatus: 'Completed', performedBy: tech1, reportedBy: doc2, createdAt: d('2026-03-05T10:00:00') } });
-  // P9 (أنس) — thyroid I-131 whole-body completed
-  await prisma.scanThyroid.create({ data: { patientId: id('28509099999999'), diagnosis: 'Post-thyroidectomy', isotopeType: 'I-131', tshLevel: 58, withdrawalDays: 21, isotopeDoseMCi: 3, injectionTime: d('2026-02-01T07:00:00'), scanTime: d('2026-02-02T07:00:00'), totalUptake: 0.4, impression: 'Minimal residual tissue; no distant metastasis', workflowStatus: 'Completed', performedBy: tech1, reportedBy: doc2, createdAt: d('2026-02-02T09:00:00') } });
-  console.log('  ✅ 6 completed (incl. PET/CT ×2 for comparison)');
-
-  // ── Clinic green files (Thyroid Cancer follow-up) ──
-  console.log('\n🟢 Green files...');
-  await prisma.clinicGreenFile.create({ data: { patientId: id('29708088888888'), caseId: caseThyCa.id, followUpDate: new Date(), thyroglobulin: 0.4, antiTg: 14, tsh: 0.3, ft3: 3.3, ft4: 1.4, radioiodineUptake: '1%', wholeBodyScanResult: 'No abnormal uptake', neckUltrasound: 'Normal post-op bed', treatmentPlan: 'Levothyroxine 150mcg', responseToTherapy: 'Excellent response', physicianNotes: 'استجابة ممتازة', createdBy: doc2 } });
-  await prisma.clinicGreenFile.create({ data: { patientId: id('28509099999999'), followUpDate: daysFromNow(120), thyroglobulin: 0.6, tsh: 0.4, treatmentPlan: 'Continue suppression', responseToTherapy: 'Indeterminate', physicianNotes: 'متابعة بعد 4 شهور', createdBy: doc2 } });
-  console.log('  ✅ 2 green files');
-
-  // ── Clinic red files (Thyroid Disease follow-up) ──
-  console.log('\n🔴 Red files...');
-  await prisma.clinicRedFile.create({ data: { patientId: id('29904044444444'), diseaseType: 'Hyperthyroidism', followUpDate: new Date(), tsh: 0.02, ft3: 8.1, ft4: 3.0, trAb: 11.5, thyroidVolume: 34, symptoms: 'خفقان، رعشة، نقص وزن', currentMedication: 'Carbimazole 20mg', physicianNotes: 'بدء كاربيمازول', createdBy: doc2 } });
-  await prisma.clinicRedFile.create({ data: { patientId: id('29006066666666'), diseaseType: 'Hypothyroidism', followUpDate: daysFromNow(45), tsh: 38, ft4: 0.5, antiTpo: 720, symptoms: 'إرهاق، زيادة وزن', currentMedication: 'Levothyroxine 75mcg', doseAdjustment: 'زيادة الجرعة', physicianNotes: 'تعديل الجرعة', createdBy: doc2 } });
-  console.log('  ✅ 2 red files');
-
-  // ── Appointments (overdue + upcoming → follow-up reminder panel) ──
-  console.log('\n📅 Appointments...');
-  const appts = [
-    { patientId: id('29904044444444'), appointmentDate: daysFromNow(-7),  appointmentType: 'clinic_red',   notes: 'متابعة فرط نشاط — متأخرة',  status: 'Scheduled' },
-    { patientId: id('29006066666666'), appointmentDate: daysFromNow(-2),  appointmentType: 'clinic_red',   notes: 'ضبط جرعة — متأخرة',          status: 'Scheduled' },
-    { patientId: id('29708088888888'), appointmentDate: daysFromNow(14),  appointmentType: 'clinic_green',  notes: 'متابعة ملف أخضر',           status: 'Scheduled' },
-    { patientId: id('28803033333333'), appointmentDate: daysFromNow(30),  appointmentType: 'scan_psma',     notes: 'PSMA متابعة',               status: 'Scheduled' },
-    { patientId: id('30001011111111'), appointmentDate: daysFromNow(45),  appointmentType: 'scan_petct',    notes: 'PET/CT متابعة',             status: 'Scheduled' },
-    { patientId: id('28509099999999'), appointmentDate: daysFromNow(120), appointmentType: 'clinic_green',  notes: 'متابعة بعد اليود',           status: 'Scheduled' },
-  ];
-  for (const a of appts) {
-    await prisma.appointment.create({ data: { ...a, createdBy: creator } });
+  // ── 3. CREATE PATIENTS ────────────────────────────────────────────────────
+  console.log('\n🏥 Creating demo patients...');
+  const patMap = {};
+  for (const p of PATIENTS) {
+    const pat = await prisma.patient.create({
+      data: {
+        nationalId: p.nationalId, name: p.name, gender: p.gender,
+        birthDate: p.birthDate, phone: p.phone, bloodType: p.bloodType,
+        address: p.address, createdBy: admin,
+      },
+    });
+    patMap[p.scenario] = pat.id;
+    console.log(`  ✅ ${p.name} (${p.scenario})`);
   }
-  console.log('  ✅ 6 appointments (2 overdue, 4 upcoming)');
 
-  console.log('\n🎉 Demo seed complete. Queues populated for every role.\n');
-  console.log('   Physician assessment : 4 visits');
-  console.log('   Nurse                : 3 scans (incl. PET/CT-F + carbimazole thyroid)');
-  console.log('   Technician           : 3 scans (1 free, 1 passes gate, 1 blocked on contraception)');
-  console.log('   Physician reporting  : 3 scans');
-  console.log('   Completed/history    : 6 scans (PET/CT ×2 for comparison)\n');
+  // ── 4. VISITS & SCANS ─────────────────────────────────────────────────────
+  console.log('\n📋 Creating visits & scan records...');
+
+  const mkVisit = (patientId, category, subCategory, status, recordedBy, overrides = {}) =>
+    prisma.visit.create({ data: { patientId, category, subCategory, visitDate: daysAgo(overrides.daysAgo || 0), workflowStatus: status, recordedBy, ...overrides, daysAgo: undefined } });
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 1: كريم فؤاد — PET/CT history (2 completed + 1 Pending_Report)
+  // ────────────────────────────────────────────────────────────
+  const pid1 = patMap['petct_history'];
+  // Past PET/CT #1 (90 days ago, completed)
+  const v1a = await mkVisit(pid1, 'PET_CT', null, 'Completed', doc1, { daysAgo: 90 });
+  await prisma.scanPETCT.create({ data: {
+    patientId: pid1, visitId: v1a.id,
+    diagnosis: 'Ca Lung (Squamous Cell)',
+    petAim: 'initial_staging',
+    complaint: 'سعال دموي + ضيق تنفس',
+    radioYn: false, chemoYn: false, gcsfGiven: false,
+    dmHistory: false, htnHistory: false, contrastAllergy: false,
+    tumorMarkers: JSON.stringify([{ name: 'CEA', value: '18.4', physician: 'د. محمد عبدالرحمن' }]),
+    urea: 28.0, creatinine: 0.9,
+    renalFunctionDate: daysAgo(91),
+    prepWeight: 72, prepHeight: 175, prepBloodGlucose: 88,
+    injectionSite: 'RT hand',
+    fdgDoseMCi: 12.5,
+    injectionTime: daysAgo(90),
+    scanTime: daysAgo(90),
+    uptakeTime: 60,
+    bodyRegion: 'Skull → thighs',
+    suvMax: 14.2, suvMean: 8.6,
+    lesionLocation: 'RT upper lobe + mediastinal LN',
+    lesionSize: '3.8 × 2.9 cm',
+    metastasisSign: true,
+    metastasisDetails: 'Mediastinal + hilar LN involvement',
+    impression: 'Hypermetabolic RUL mass with mediastinal nodal metastasis — T2N2M0 (Stage IIIA)',
+    workflowStatus: 'Completed',
+    performedBy: tec1, reportedBy: doc1,
+  }});
+
+  // Past PET/CT #2 (45 days ago, completed — post-chemo monitoring)
+  const v1b = await mkVisit(pid1, 'PET_CT', null, 'Completed', doc1, { daysAgo: 45 });
+  await prisma.scanPETCT.create({ data: {
+    patientId: pid1, visitId: v1b.id,
+    diagnosis: 'Ca Lung (Squamous Cell) — post 4 cycles chemo',
+    petAim: 'monitoring_ttt',
+    complaint: 'متابعة استجابة العلاج',
+    chemoYn: true, chemoSessions: 4, lastChemoDate: daysAgo(50),
+    radioYn: false, gcsfGiven: true, gcsfLastDate: daysAgo(52), gcsfNotes: 'G-CSF (Filgrastim 300mcg SC) بعد الكيماوي',
+    dmHistory: false, htnHistory: true, htnNotes: 'Amlodipine 5mg — ضغط متحكم فيه',
+    contrastAllergy: false,
+    tumorMarkers: JSON.stringify([
+      { name: 'CEA', value: '9.2', physician: 'د. محمد عبدالرحمن' },
+      { name: 'CYFRA 21-1', value: '3.8', physician: 'د. محمد عبدالرحمن' },
+    ]),
+    urea: 32.0, creatinine: 1.0, renalFunctionDate: daysAgo(46),
+    prepWeight: 70, prepHeight: 175, prepBloodGlucose: 92,
+    injectionSite: 'RT hand',
+    fdgDoseMCi: 12.0,
+    injectionTime: daysAgo(45),
+    scanTime: daysAgo(45),
+    uptakeTime: 60,
+    bodyRegion: 'Skull → thighs',
+    suvMax: 7.8, suvMean: 5.1,
+    lesionLocation: 'RT upper lobe (residual)',
+    lesionSize: '2.1 × 1.6 cm',
+    metastasisSign: false,
+    impression: 'Partial metabolic response — RUL mass decreased in size and FDG avidity. Mediastinal nodes resolved.',
+    workflowStatus: 'Completed',
+    performedBy: tec1, reportedBy: doc1,
+  }});
+
+  // Current PET/CT — Pending_Report (scanned 2 hours ago)
+  const v1c = await mkVisit(pid1, 'PET_CT', null, 'Pending_Report', doc1, { daysAgo: 0 });
+  await prisma.scanPETCT.create({ data: {
+    patientId: pid1, visitId: v1c.id,
+    diagnosis: 'Ca Lung (Squamous Cell) — end of TTT assessment',
+    petAim: 'end_of_ttt',
+    complaint: 'اكتمال 6 سيكل كيماوي',
+    chemoYn: true, chemoSessions: 6, lastChemoDate: daysAgo(14),
+    radioYn: true, radioSite: 'RT lung', lastRadiationDate: daysAgo(7),
+    gcsfGiven: true, gcsfLastDate: daysAgo(10), gcsfNotes: 'Filgrastim 300mcg كل 2 يوم × 5 جرعات',
+    dmHistory: false, htnHistory: true, htnNotes: 'Amlodipine 5mg يومياً',
+    contrastAllergy: false,
+    tumorMarkers: JSON.stringify([
+      { name: 'CEA', value: '4.1', physician: 'د. محمد عبدالرحمن' },
+      { name: 'CYFRA 21-1', value: '2.2', physician: 'د. محمد عبدالرحمن' },
+      { name: 'NSE', value: '12.0', physician: 'د. محمد عبدالرحمن' },
+    ]),
+    urea: 35.0, ureaNotes: 'طبيعي — مراقبة دورية', creatinine: 1.1, creatinineNotes: 'حدود طبيعة — CKD stage I',
+    renalFunctionDate: daysAgo(2),
+    prevPetDate: daysAgo(45), prevPetFindings: 'Partial metabolic response after 4 cycles',
+    ctMriYn: true, ctMriDate: daysAgo(10), ctMriFindings: 'RUL mass 1.8 × 1.3 cm — decreased',
+    prepWeight: 69, prepHeight: 175, prepBloodGlucose: 96,
+    injectionSite: 'RT hand',
+    fdgDoseMCi: 11.5,
+    injectionTime: hoursAgo(3),
+    scanTime: hoursAgo(2),
+    uptakeTime: 60,
+    workflowStatus: 'Pending_Report',
+    performedBy: tec1,
+  }});
+  console.log('  ✅ كريم فؤاد (PET/CT ×3: history + Pending_Report)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 2: هالة سمير — PET/CT Pending_Nurse, blood glucose = 225 → GATE TEST
+  // ────────────────────────────────────────────────────────────
+  const pid2 = patMap['petct_glucose_gate'];
+  const v2 = await mkVisit(pid2, 'PET_CT', null, 'Pending_Nurse', doc1, { daysAgo: 0 });
+  await prisma.scanPETCT.create({ data: {
+    patientId: pid2, visitId: v2.id,
+    diagnosis: 'Ca Breast (IDC Grade III)',
+    petAim: 'initial_staging',
+    complaint: 'كتلة بالثدي الأيسر + ضخامة عقد إبطية',
+    contraceptiveStatus: 'married', lmpDate: daysAgo(12),
+    radioYn: false, chemoYn: false, gcsfGiven: false,
+    dmHistory: true, dmMedType: 'Pills', dmLastDoseDate: hoursAgo(2),
+    htnHistory: false, contrastAllergy: false,
+    tumorMarkers: JSON.stringify([{ name: 'CA 15-3', value: '68.2', physician: 'د. محمد عبدالرحمن' }]),
+    urea: 22.0, creatinine: 0.8, renalFunctionDate: daysAgo(3),
+    prepWeight: 68, prepHeight: 162, prepBloodGlucose: 225,
+    injectionSite: 'LT hand',
+    fdgDoseMCi: 10.5,
+    workflowStatus: 'Pending_Nurse',
+    performedBy: doc1,
+  }});
+  console.log('  ✅ هالة سمير (PET/CT Pending_Nurse — glucose gate: 225 mg/dL)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 3: سمر عاطف — PET/CT Pending_Technical, NO contraception → TECH GATE
+  // ────────────────────────────────────────────────────────────
+  const pid3 = patMap['petct_contraception_gate'];
+  const v3 = await mkVisit(pid3, 'PET_CT', null, 'Pending_Technical', nur1, { daysAgo: 0 });
+  await prisma.scanPETCT.create({ data: {
+    patientId: pid3, visitId: v3.id,
+    diagnosis: 'Diffuse Large B-Cell Lymphoma',
+    petAim: 'initial_staging',
+    complaint: 'تضخم العقد اللمفاوية + إرهاق',
+    contraceptiveStatus: '',  // ← EMPTY — triggers tech gate
+    radioYn: false, chemoYn: false, gcsfGiven: false,
+    dmHistory: false, htnHistory: false, contrastAllergy: false,
+    tumorMarkers: JSON.stringify([{ name: 'LDH', value: '780', physician: 'د. محمد عبدالرحمن' }]),
+    urea: 26.0, creatinine: 0.85, renalFunctionDate: daysAgo(1),
+    prepWeight: 58, prepHeight: 165, prepBloodGlucose: 86,
+    injectionSite: 'RT hand',
+    fdgDoseMCi: 9.5,
+    workflowStatus: 'Pending_Technical',
+    performedBy: doc1,
+  }});
+  console.log('  ✅ سمر عاطف (PET/CT Pending_Technical — contraception gate: missing)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 4: ليلى فهمي — PET/CT Pending_Technical, all gates pass
+  // ────────────────────────────────────────────────────────────
+  const pid4 = patMap['petct_gate_passes'];
+  const v4 = await mkVisit(pid4, 'PET_CT', null, 'Pending_Technical', nur1, { daysAgo: 0 });
+  await prisma.scanPETCT.create({ data: {
+    patientId: pid4, visitId: v4.id,
+    diagnosis: 'Ca Ovary (Serous Carcinoma Grade III)',
+    petAim: 'monitoring_ttt',
+    complaint: 'متابعة بعد 3 سيكل كيماوي',
+    contraceptiveStatus: 'married', lmpDate: daysAgo(22),
+    chemoYn: true, chemoSessions: 3, lastChemoDate: daysAgo(21),
+    radioYn: false, gcsfGiven: false,
+    dmHistory: false, htnHistory: false, contrastAllergy: false,
+    tumorMarkers: JSON.stringify([
+      { name: 'CA-125', value: '142.0', physician: 'د. محمد عبدالرحمن' },
+      { name: 'HE4', value: '98.3', physician: 'د. محمد عبدالرحمن' },
+    ]),
+    urea: 24.0, creatinine: 0.75, renalFunctionDate: daysAgo(2),
+    prevPetDate: daysAgo(65), prevPetFindings: 'Hypermetabolic pelvic mass + omental deposits',
+    ctMriYn: true, ctMriDate: daysAgo(25), ctMriFindings: 'Pelvic mass reduced 40% after chemo',
+    prepWeight: 65, prepHeight: 168, prepBloodGlucose: 91,
+    injectionSite: 'LT hand',
+    fdgDoseMCi: 10.0,
+    workflowStatus: 'Pending_Technical',
+    performedBy: doc1,
+  }});
+  console.log('  ✅ ليلى فهمي (PET/CT Pending_Technical — all gates pass)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 5: مجدي رضا — PET/CT full form (HTN + DM insulin + 3 markers)
+  // ────────────────────────────────────────────────────────────
+  const pid5 = patMap['petct_htn_dm_markers'];
+  const v5 = await mkVisit(pid5, 'PET_CT', null, 'Pending_Doctor', admin, { daysAgo: 1 });
+  console.log('  ✅ مجدي رضا (PET/CT Pending_Doctor — HTN+DM+3 markers, visit created, form to fill)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 6: نادية إبراهيم — PET/CT Pending_Doctor, G-CSF 8 days ago
+  // ────────────────────────────────────────────────────────────
+  const pid6 = patMap['petct_gcsf_warning'];
+  const v6 = await mkVisit(pid6, 'PET_CT', null, 'Pending_Doctor', doc2, { daysAgo: 0 });
+  console.log('  ✅ نادية إبراهيم (PET/CT Pending_Doctor — G-CSF warning scenario)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 7: طارق عبدالله — PET/CT Pending_Doctor, resus aim + renal notes
+  // ────────────────────────────────────────────────────────────
+  const pid7 = patMap['petct_resus_renal'];
+  const v7 = await mkVisit(pid7, 'PET_CT', null, 'Pending_Nurse', doc1, { daysAgo: 0 });
+  await prisma.scanPETCT.create({ data: {
+    patientId: pid7, visitId: v7.id,
+    diagnosis: 'Ca Lung (NSCLC Adenocarcinoma)',
+    petAim: 'resus', petAimResusSide: 'suspected hepatic metastasis — بعد ظهور ألم في الربع الأيمن العلوي',
+    complaint: 'ألم في الربع الأيمن العلوي + ضيق تنفس',
+    surgeryHistory: 'RT lower lobectomy 8 months ago', surgeryDate: daysAgo(240),
+    surgeryOthers: 'VATS approach — no complications',
+    radioYn: true, radioSite: 'RT chest wall', lastRadiationDate: daysAgo(90),
+    chemoYn: true, chemoSessions: 4, lastChemoDate: daysAgo(45),
+    gcsfGiven: true, gcsfLastDate: daysAgo(42), gcsfNotes: 'Pegfilgrastim 6mg SC × 1 dose post cycle 4',
+    dmHistory: false,
+    htnHistory: true, htnNotes: 'Losartan 50mg + Amlodipine 5mg — ضغط متحكم فيه',
+    contrastAllergy: false,
+    tumorMarkers: JSON.stringify([
+      { name: 'CEA', value: '28.5', physician: 'د. محمد عبدالرحمن' },
+      { name: 'CYFRA 21-1', value: '7.9', physician: 'د. محمد عبدالرحمن' },
+    ]),
+    urea: 48.0, ureaNotes: 'مرتفع قليلاً — مريض هيبوتنشن خفيف',
+    creatinine: 1.6, creatinineNotes: 'CKD Stage II — eGFR 58 mL/min — يحتاج متابعة قبل التباين',
+    renalFunctionDate: daysAgo(3),
+    prevPetDate: daysAgo(180), prevPetFindings: 'Complete metabolic response post lobectomy',
+    ctMriYn: true, ctMriDate: daysAgo(14), ctMriFindings: 'New hepatic lesion 2.2cm segment VI + pleural effusion',
+    prepWeight: 74, prepHeight: 172, prepBloodGlucose: 102,
+    injectionSite: 'LT forearm',
+    fdgDoseMCi: 12.0,
+    workflowStatus: 'Pending_Nurse',
+    performedBy: doc1,
+  }});
+  console.log('  ✅ طارق عبدالله (PET/CT Pending_Nurse — resus aim + elevated creatinine)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 8: وليد ناصر — PSMA high PSA, Pending_Report + 1 prior
+  // ────────────────────────────────────────────────────────────
+  const pid8 = patMap['psma_high_psa'];
+  // Completed prior PSMA
+  const v8a = await mkVisit(pid8, 'PSMA_PET_CT', null, 'Completed', doc1, { daysAgo: 90 });
+  await prisma.scanPSMAPETCT.create({ data: {
+    patientId: pid8, visitId: v8a.id,
+    diagnosis: 'Prostate Cancer (Gleason 4+4=8)',
+    psaTestDate: daysAgo(92), totalPSA: 32.5, freePSA: 3.5, gleasonScore: '4+4=8',
+    surgeryHistory: 'TURP', surgeryDate: daysAgo(730),
+    radioYn: true, radioSite: 'Pelvis', radioSessions: 35, radioLastSession: daysAgo(180),
+    chemoYn: false, gcsfGiven: false,
+    htnHistory: true, htnNotes: 'Ramipril 5mg',
+    dmHistory: false, contrastAllergy: false,
+    urea: 30.0, creatinine: 1.0, renalFunctionDate: daysAgo(93),
+    prevPsmaDate: null, prevPsmaSite: null,
+    ctMriYn: true, ctMriDate: daysAgo(95), ctMriSite: 'Pelvic nodes suspicious',
+    prepWeight: 80, prepHeight: 170, prepBloodGlucose: 94,
+    injectionSite: 'RT hand',
+    ga68DoseMCi: 4.0,
+    injectionTime: daysAgo(90), scanTime: daysAgo(90), uptakeTime: 60,
+    prostateBedRecurrence: true, lymphNodeInvolvement: true,
+    boneMetastasis: false, visceralMetastasis: false,
+    lesionLocations: 'Prostate bed + external iliac nodes bilateral',
+    psmaExpression: 'Focal',
+    impression: 'PSMA-avid prostate bed recurrence + bilateral pelvic nodal disease. No distant mets.',
+    workflowStatus: 'Completed',
+    performedBy: tec1, reportedBy: doc1,
+  }});
+
+  // Current PSMA Pending_Report
+  const v8b = await mkVisit(pid8, 'PSMA_PET_CT', null, 'Pending_Report', doc1, { daysAgo: 0 });
+  await prisma.scanPSMAPETCT.create({ data: {
+    patientId: pid8, visitId: v8b.id,
+    diagnosis: 'Prostate Cancer — re-staging after hormonal therapy',
+    psaTestDate: daysAgo(7), totalPSA: 48.5, freePSA: 4.8, gleasonScore: '4+4=8',
+    surgeryHistory: 'TURP', surgeryDate: daysAgo(730),
+    radioYn: true, radioSite: 'Pelvis', radioSessions: 35, radioLastSession: daysAgo(180),
+    chemoYn: false, gcsfGiven: false,
+    htnHistory: true, htnNotes: 'Ramipril 5mg — ضغط طبيعي',
+    dmHistory: false, contrastAllergy: false,
+    tumorMarkers: JSON.stringify([{ name: 'ALP', value: '145', physician: 'د. محمد عبدالرحمن' }]),
+    urea: 34.0, creatinine: 1.1, renalFunctionDate: daysAgo(8),
+    prevPsmaDate: daysAgo(90), prevPsmaSite: 'Prostate bed + pelvic nodes',
+    ctMriYn: true, ctMriDate: daysAgo(14), ctMriSite: 'T8 vertebral sclerotic lesion — new',
+    prepWeight: 82, prepHeight: 170, prepBloodGlucose: 97,
+    injectionSite: 'RT hand',
+    ga68DoseMCi: 4.5,
+    injectionTime: hoursAgo(4), scanTime: hoursAgo(3), uptakeTime: 60,
+    prostateBedRecurrence: true, lymphNodeInvolvement: true,
+    boneMetastasis: true, visceralMetastasis: false,
+    lesionLocations: 'Prostate bed + bilateral pelvic/para-aortic nodes + T8 vertebral metastasis (new)',
+    psmaExpression: 'Diffuse',
+    impression: 'Disease progression on hormonal therapy. New T8 bone metastasis. Theranostic evaluation recommended.',
+    workflowStatus: 'Pending_Report',
+    performedBy: tec1,
+  }});
+  console.log('  ✅ وليد ناصر (PSMA ×2: completed + Pending_Report — high PSA + bone mets)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 9: يوسف حسين — PSMA comparison (1 completed + Pending_Technical)
+  // ────────────────────────────────────────────────────────────
+  const pid9 = patMap['psma_comparison'];
+  const v9a = await mkVisit(pid9, 'PSMA_PET_CT', null, 'Completed', doc1, { daysAgo: 120 });
+  await prisma.scanPSMAPETCT.create({ data: {
+    patientId: pid9, visitId: v9a.id,
+    diagnosis: 'Prostate Cancer post-radical prostatectomy',
+    psaTestDate: daysAgo(121), totalPSA: 3.2, freePSA: 0.38, gleasonScore: '3+4=7',
+    surgeryHistory: 'Radical prostatectomy', surgeryDate: daysAgo(365),
+    radioYn: false, chemoYn: false, gcsfGiven: false,
+    htnHistory: false, dmHistory: false, contrastAllergy: false,
+    urea: 28.0, creatinine: 0.95, renalFunctionDate: daysAgo(122),
+    ctMriYn: false,
+    prepWeight: 78, prepHeight: 175, prepBloodGlucose: 85,
+    injectionSite: 'RT hand',
+    ga68DoseMCi: 4.0,
+    injectionTime: daysAgo(120), scanTime: daysAgo(120), uptakeTime: 60,
+    prostateBedRecurrence: true, lymphNodeInvolvement: false,
+    boneMetastasis: false, visceralMetastasis: false,
+    lesionLocations: 'Prostate bed focal uptake',
+    psmaExpression: 'Focal',
+    impression: 'Focal PSMA-avid prostate bed recurrence. No nodal or distant disease.',
+    workflowStatus: 'Completed',
+    performedBy: tec1, reportedBy: doc1,
+  }});
+
+  const v9b = await mkVisit(pid9, 'PSMA_PET_CT', null, 'Pending_Technical', nur1, { daysAgo: 0 });
+  await prisma.scanPSMAPETCT.create({ data: {
+    patientId: pid9, visitId: v9b.id,
+    diagnosis: 'Post-prostatectomy BCR — PSA rising',
+    psaTestDate: daysAgo(5), totalPSA: 0.8, freePSA: 0.09, gleasonScore: '3+4=7',
+    surgeryHistory: 'Radical prostatectomy', surgeryDate: daysAgo(365),
+    radioYn: false, chemoYn: false, gcsfGiven: false,
+    htnHistory: false, dmHistory: false, contrastAllergy: false,
+    tumorMarkers: JSON.stringify([{ name: 'ALP', value: '82', physician: 'د. محمد عبدالرحمن' }]),
+    urea: 29.0, creatinine: 0.92, renalFunctionDate: daysAgo(6),
+    prevPsmaDate: daysAgo(120), prevPsmaSite: 'Focal prostate bed recurrence',
+    ctMriYn: false,
+    prepWeight: 77, prepHeight: 175, prepBloodGlucose: 89,
+    injectionSite: 'RT hand',
+    ga68DoseMCi: 4.0,
+    workflowStatus: 'Pending_Technical',
+    performedBy: doc1,
+  }});
+  console.log('  ✅ يوسف حسين (PSMA ×2: completed + Pending_Technical — comparison)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 10: سامي الشريف — PSMA Pending_Nurse (DM + HTN)
+  // ────────────────────────────────────────────────────────────
+  const pid10 = patMap['psma_dm_htn'];
+  const v10 = await mkVisit(pid10, 'PSMA_PET_CT', null, 'Pending_Nurse', doc1, { daysAgo: 0 });
+  await prisma.scanPSMAPETCT.create({ data: {
+    patientId: pid10, visitId: v10.id,
+    diagnosis: 'Prostate Cancer (metastatic castration-resistant)',
+    psaTestDate: daysAgo(10), totalPSA: 155.0, freePSA: 12.4, gleasonScore: '4+5=9',
+    surgeryHistory: 'Bilateral orchiectomy', surgeryDate: daysAgo(548),
+    radioYn: false, chemoYn: true, chemoSessions: 6, chemoLastCycle: daysAgo(30),
+    gcsfGiven: true, gcsfLastDate: daysAgo(28), gcsfNotes: 'Filgrastim 300mcg × 5 days',
+    htnHistory: true, htnNotes: 'Lisinopril 10mg + Bisoprolol 2.5mg',
+    dmHistory: true, dmMedType: 'Insulin', dmLastDoseDate: hoursAgo(14),
+    contrastAllergy: false,
+    tumorMarkers: JSON.stringify([
+      { name: 'ALP', value: '312', physician: 'د. محمد عبدالرحمن' },
+      { name: 'LDH', value: '580', physician: 'د. محمد عبدالرحمن' },
+    ]),
+    urea: 42.0, ureaNotes: 'مرتفع — CKD background',
+    creatinine: 1.45, creatinineNotes: 'CKD Stage II — eGFR 62',
+    renalFunctionDate: daysAgo(3),
+    ctMriYn: true, ctMriDate: daysAgo(20), ctMriSite: 'Multiple bone mets (T4, L2, L5, ribs) + hepatic deposits (2)',
+    prepWeight: 72, prepHeight: 165, prepBloodGlucose: 138,
+    injectionSite: 'LT forearm',
+    ga68DoseMCi: 4.5,
+    workflowStatus: 'Pending_Nurse',
+    performedBy: doc1,
+  }});
+  console.log('  ✅ سامي الشريف (PSMA Pending_Nurse — DM insulin + HTN + high PSA)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 11: سلمى عادل — Thyroid MEDICATION ALERT (carbimazole)
+  // ────────────────────────────────────────────────────────────
+  const pid11 = patMap['thyroid_med_alert'];
+  const v11 = await mkVisit(pid11, 'GAMMA', 'Thyroid', 'Pending_Doctor', doc2, { daysAgo: 0 });
+  console.log('  ✅ سلمى عادل (Thyroid Pending_Doctor — carbimazole med alert)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 12: أنس كمال — Thyroid WBS Therapeutic (I-131), Pending_Technical
+  // ────────────────────────────────────────────────────────────
+  const pid12 = patMap['thyroid_wbs_therapeutic'];
+  const v12 = await mkVisit(pid12, 'GAMMA', 'Thyroid', 'Pending_Technical', nur1, { daysAgo: 0 });
+  await prisma.scanThyroid.create({ data: {
+    patientId: pid12, visitId: v12.id,
+    scanSubType: 'wbs_therapeutic',
+    indication: 'Post-total thyroidectomy ablation — papillary thyroid ca',
+    diagnosis: 'Papillary Thyroid Carcinoma (T2N1bM0)',
+    complaint: 'استئصال الغدة الدرقية منذ 4 أسابيع — للعلاج باليود المشع',
+    tshLevel: 85.4, t3Level: 0.5, t4Level: 0.4, labDate: daysAgo(7),
+    antibodies: 'Anti-TPO: 42 IU/mL, Anti-Tg: 18 IU/mL',
+    rightLobeSize: 'مستأصل', leftLobeSize: 'مستأصل', isthmusSize: 'مستأصل', usDate: daysAgo(35),
+    prepWeight: 78, prepHeight: 174, prepBloodGlucose: 87,
+    injectionSite: 'RT hand',
+    workflowStatus: 'Pending_Technical',
+    performedBy: doc2,
+  }});
+  console.log('  ✅ أنس كمال (Thyroid WBS Therapeutic Pending_Technical)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 13: رانيا سامي — Thyroid WBS Diagnostic, 2 priors, Pending_Report
+  // ────────────────────────────────────────────────────────────
+  const pid13 = patMap['thyroid_wbs_diagnostic'];
+  const v13a = await mkVisit(pid13, 'GAMMA', 'Thyroid', 'Completed', doc2, { daysAgo: 180 });
+  await prisma.scanThyroid.create({ data: {
+    patientId: pid13, visitId: v13a.id,
+    scanSubType: 'thyroid_scan',
+    indication: 'Goiter evaluation',
+    diagnosis: 'Multinodular goiter',
+    tshLevel: 2.1, t3Level: 1.8, t4Level: 1.0, labDate: daysAgo(182),
+    prepWeight: 60, prepHeight: 163, prepBloodGlucose: 82,
+    injectionSite: 'LT hand',
+    impression: 'Heterogeneous thyroid uptake — cold nodule RT lobe 1.4cm',
+    workflowStatus: 'Completed', performedBy: tec1, reportedBy: doc2,
+  }});
+
+  const v13b = await mkVisit(pid13, 'GAMMA', 'Thyroid', 'Pending_Report', doc2, { daysAgo: 0 });
+  await prisma.scanThyroid.create({ data: {
+    patientId: pid13, visitId: v13b.id,
+    scanSubType: 'wbs_diagnostic',
+    indication: 'Cold nodule RT lobe — FNA malignant cells',
+    diagnosis: 'Suspected papillary thyroid ca — pre-op staging',
+    complaint: 'نتيجة خزعة مشبوهة',
+    tshLevel: 1.8, t3Level: 1.7, t4Level: 0.9, labDate: daysAgo(5),
+    rightLobeSize: '18×14mm nodule', leftLobeSize: 'Normal 4.2cm', usDate: daysAgo(14),
+    prepWeight: 61, prepHeight: 163, prepBloodGlucose: 80,
+    injectionSite: 'LT hand',
+    workflowStatus: 'Pending_Report', performedBy: tec1,
+  }});
+  console.log('  ✅ رانيا سامي (Thyroid ×2: completed + Pending_Report — WBS diagnostic)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 14: محمود صلاح — Thyroid routine scan, Completed (history)
+  // ────────────────────────────────────────────────────────────
+  const pid14 = patMap['thyroid_routine_complete'];
+  const v14 = await mkVisit(pid14, 'GAMMA', 'Thyroid', 'Completed', doc2, { daysAgo: 30 });
+  await prisma.scanThyroid.create({ data: {
+    patientId: pid14, visitId: v14.id,
+    scanSubType: 'thyroid_scan',
+    indication: 'Hypothyroidism follow-up',
+    diagnosis: 'Primary hypothyroidism on replacement therapy',
+    tshLevel: 4.8, t3Level: 1.4, t4Level: 0.7, labDate: daysAgo(32),
+    prepWeight: 85, prepHeight: 170, prepBloodGlucose: 95,
+    injectionSite: 'RT hand',
+    impression: 'Heterogeneous reduced uptake — consistent with autoimmune thyroiditis (Hashimoto\'s)',
+    workflowStatus: 'Completed', performedBy: tec1, reportedBy: doc2,
+  }});
+  console.log('  ✅ محمود صلاح (Thyroid completed — hypothyroid follow-up)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 15: حسن علي — Bone scan completed (multiple hot spots)
+  // ────────────────────────────────────────────────────────────
+  const pid15 = patMap['bone_metastasis'];
+  const v15 = await mkVisit(pid15, 'GAMMA', 'Bone', 'Completed', doc3, { daysAgo: 60 });
+  await prisma.scanBone.create({ data: {
+    patientId: pid15, visitId: v15.id,
+    indication: 'Prostate cancer bone metastasis surveillance',
+    diagnosis: 'Metastatic prostate cancer',
+    complaint: 'ألم عظام منتشر',
+    prepWeight: 76, prepHeight: 168, prepBloodGlucose: 92,
+    injectionSite: 'RT hand',
+    impression: 'Multiple sites of increased osteoblastic activity: cervical spine C5-C6, T3, T8, T12, L2, bilateral ribs, sternum — extensive bone metastases',
+    workflowStatus: 'Completed', performedBy: tec1, reportedBy: doc3,
+  }});
+  console.log('  ✅ حسن علي (Bone scan completed — extensive bone mets)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 16: مروة جمال — Bone scan Pending_Technical
+  // ────────────────────────────────────────────────────────────
+  const pid16 = patMap['bone_surveillance'];
+  const v16 = await mkVisit(pid16, 'GAMMA', 'Bone', 'Pending_Technical', nur1, { daysAgo: 0 });
+  await prisma.scanBone.create({ data: {
+    patientId: pid16, visitId: v16.id,
+    indication: 'Breast cancer bone surveillance — annual',
+    diagnosis: 'Ca Breast (Stage II, ER+/PR+/HER2-) on hormonal therapy',
+    complaint: 'متابعة دورية سنوية',
+    prepWeight: 65, prepHeight: 162, prepBloodGlucose: 88,
+    injectionSite: 'LT hand',
+    workflowStatus: 'Pending_Technical', performedBy: doc3,
+  }});
+  console.log('  ✅ مروة جمال (Bone scan Pending_Technical — breast cancer surveillance)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 17: عادل منصور — Renal scan Pending_Report
+  // ────────────────────────────────────────────────────────────
+  const pid17 = patMap['renal_stenosis'];
+  const v17 = await mkVisit(pid17, 'GAMMA', 'Renal', 'Pending_Report', doc3, { daysAgo: 0 });
+  await prisma.scanRenal.create({ data: {
+    patientId: pid17, visitId: v17.id,
+    indication: 'Renovascular hypertension evaluation',
+    diagnosis: 'Suspected LT renal artery stenosis',
+    complaint: 'ارتفاع ضغط صعب في السيطرة',
+    prepWeight: 82, prepHeight: 173, prepBloodGlucose: 104,
+    injectionSite: 'RT hand',
+    workflowStatus: 'Pending_Report', performedBy: tec1,
+  }});
+  console.log('  ✅ عادل منصور (Renal Pending_Report — renal artery stenosis)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 18: علاء الدين خليل — Renal scan Completed (transplant)
+  // ────────────────────────────────────────────────────────────
+  const pid18 = patMap['renal_transplant'];
+  const v18 = await mkVisit(pid18, 'GAMMA', 'Renal', 'Completed', doc3, { daysAgo: 45 });
+  await prisma.scanRenal.create({ data: {
+    patientId: pid18, visitId: v18.id,
+    indication: 'Post-renal transplant function assessment',
+    diagnosis: 'Renal transplant in LIF — 8 months post-op',
+    complaint: 'ارتفاع في الكرياتينين',
+    prepWeight: 74, prepHeight: 170, prepBloodGlucose: 98,
+    injectionSite: 'RT hand',
+    impression: 'Mildly delayed perfusion phase. Functioning renal transplant with mild acute rejection pattern — correlate clinically.',
+    workflowStatus: 'Completed', performedBy: tec1, reportedBy: doc3,
+  }});
+  console.log('  ✅ علاء الدين خليل (Renal completed — post-transplant)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 19: دينا وهبة — Gastric scan Pending_Doctor
+  // ────────────────────────────────────────────────────────────
+  const pid19 = patMap['gastric_gastroparesis'];
+  const v19 = await mkVisit(pid19, 'GAMMA', 'Gastric', 'Pending_Doctor', doc3, { daysAgo: 0 });
+  console.log('  ✅ دينا وهبة (Gastric Pending_Doctor — gastroparesis)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 20: فريد يوسف — Meckel's scan Pending_Nurse (pediatric)
+  // ────────────────────────────────────────────────────────────
+  const pid20 = patMap['meckel_bleeding'];
+  const v20 = await mkVisit(pid20, 'GAMMA', 'Gastric', 'Pending_Nurse', doc2, { daysAgo: 0 });
+  await prisma.scanMeckel.create({ data: {
+    patientId: pid20, visitId: v20.id,
+    indication: 'Lower GI bleeding — rule out Meckel\'s diverticulum',
+    diagnosis: 'Suspected Meckel\'s diverticulum',
+    complaint: 'نزيف مستقيمي متكرر بدون ألم (14 سنة)',
+    prepWeight: 52, prepHeight: 158, prepBloodGlucose: 82,
+    injectionSite: 'LT hand',
+    workflowStatus: 'Pending_Nurse', performedBy: doc2,
+  }});
+  console.log('  ✅ فريد يوسف (Meckel\'s Pending_Nurse — pediatric GI bleed)');
+
+  console.log('\n✅ All demo data seeded successfully!\n');
+  console.log('  Users:    9  (8 active + 1 blocked)');
+  console.log('  Patients: 20 (all scenarios covered)');
+  console.log('  Scans:    30 records across 7 scan types + all workflow stages');
+  console.log('\n  Run: node seedDemo.js (idempotent — safe to re-run)\n');
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
+  .catch((e) => { console.error('❌ Seed failed:', e); process.exit(1); })
   .finally(() => prisma.$disconnect());

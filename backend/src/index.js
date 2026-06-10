@@ -7,17 +7,17 @@ const { initRealtime } = require('./realtime');
 const authRoutes = require('./routes/auth');
 const patientRoutes = require('./routes/patients');
 const visitRoutes = require('./routes/visits');
-const casesRoutes = require('./routes/cases');
+
 const labsRoutes = require('./routes/labs');
 const imagingRoutes = require('./routes/imaging');
 const radiationRoutes = require('./routes/radiation');
 const dashboardRoutes = require('./routes/dashboard');
 const adminRoutes = require('./routes/admin');
-const clinicsRoutes = require('./routes/clinics');
+
 const scansRoutes = require('./routes/scans');
 const workflowRoutes = require('./routes/workflow');
-const appointmentRoutes = require('./routes/appointments');
-const receptionRoutes = require('./routes/reception');
+
+
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -28,17 +28,17 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/visits', visitRoutes);
-app.use('/api/cases', casesRoutes);
+
 app.use('/api/labs', labsRoutes);
 app.use('/api/imaging', imagingRoutes);
 app.use('/api/radiation', radiationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/clinics', clinicsRoutes);
+
 app.use('/api/scans', scansRoutes);
 app.use('/api/workflow', workflowRoutes);
-app.use('/api/appointments', appointmentRoutes);
-app.use('/api/reception', receptionRoutes);
+
+
 
 // Static files for uploads
 const path = require('path');

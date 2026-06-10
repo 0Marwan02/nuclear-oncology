@@ -5,20 +5,18 @@ const ROLE_HOME = {
   doctor: '/physician',
   nurse: '/nurse',
   technician: '/technician',
-  reception: '/reception',
-  receptionist: '/reception',
 };
 
 const ROUTE_ROLES = {
-  '/reception': ['reception', 'receptionist', 'admin'],
+  '/reception': ['nurse', 'doctor', 'admin'],
   '/nurse': ['nurse', 'admin'],
   '/technician': ['technician', 'admin'],
   '/physician': ['doctor', 'admin'],
   '/admin/users': ['admin'],
   '/admin/logs': ['admin'],
-  '/clinic/green': ['doctor', 'admin', 'reception', 'receptionist'],
-  '/clinic/red': ['doctor', 'admin', 'reception', 'receptionist'],
-  '/scans': ['doctor', 'admin', 'reception', 'receptionist', 'technician', 'nurse'],
+  '/clinic/thyroid-cancer': ['doctor', 'admin', 'nurse'],
+  '/clinic/thyroid-disease': ['doctor', 'admin', 'nurse'],
+  '/scans': ['doctor', 'admin', 'technician', 'nurse'],
 };
 
 const matchRouteRule = (pathname) => {

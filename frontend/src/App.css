@@ -50,7 +50,7 @@
   padding: 10px 12px;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .login-form input:focus {
@@ -68,6 +68,16 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 180ms ease, transform 180ms var(--ease-out, cubic-bezier(0.23,1,0.32,1));
+}
+
+.login-form button:not(:disabled):active,
+.session-box button:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .login-form button:not(:disabled):hover { background: #1e40af; }
 }
 
 .login-form button:disabled {

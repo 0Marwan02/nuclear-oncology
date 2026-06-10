@@ -19,33 +19,12 @@ export const apiFetch = async (endpoint, options = {}) => {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.message || 'API request failed');
+    const error = new Error(data.message || 'API request failed');
+    error.data = data;
+    throw error;
   }
 
   return data;
-};
-
-export const getClinics = (type, params = {}) => {
-  const qs = new URLSearchParams(params).toString();
-  return apiFetch(`/clinics/${type}${qs ? '?' + qs : ''}`);
-};
-
-export const createClinic = (type, data) => {
-  return apiFetch(`/clinics/${type}`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
-
-export const updateClinic = (type, id, data) => {
-  return apiFetch(`/clinics/${type}/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-};
-
-export const getClinicHistory = (type, patientId) => {
-  return apiFetch(`/clinics/${type}/patient/${patientId}`);
 };
 
 export const getScans = (type, params = {}) => {
@@ -91,13 +70,6 @@ export const getWorkflowAll = (params = {}) => {
   return apiFetch(`/workflow/all${qs ? '?' + qs : ''}`);
 };
 
-export const openEncounter = (data) => {
-  return apiFetch('/reception/open-encounter', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
-
 export const getRecordsByStatus = (type, params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return apiFetch(`/workflow/${type}${qs ? '?' + qs : ''}`);
@@ -107,16 +79,16 @@ export const getPatientWorkflow = (patientId) => {
   return apiFetch(`/workflow/patient/${patientId}`);
 };
 
+export const getNurseQueue = () => {
+  return apiFetch('/workflow/nurse-queue');
+};
+
 export const getAssessmentQueue = () => {
   return apiFetch('/workflow/assessment-queue');
 };
 
 export const searchPatients = (query) => {
   return apiFetch(`/patients?q=${encodeURIComponent(query)}`);
-};
-
-export const getFollowUpReminders = (days = 30) => {
-  return apiFetch(`/appointments/reminders?days=${days}`);
 };
 
 export const updateUser = (id, data) => {

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../utils/api';
+import { useTranslation } from '../i18n/index';
 import { parseEgyptianNationalId } from '../utils/nationalIdParser';
 import { ShieldCheck, UserPlus, Ban, CheckCircle } from 'lucide-react';
 import './Admin.css';
 
 export default function AdminUsers() {
+  const { t } = useTranslation();
   const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ hospitalId: '', name: '', role: 'doctor', password: '', nationalId: '', phone: '' });
@@ -26,7 +28,7 @@ export default function AdminUsers() {
       setUsers(data);
     } catch (err) {
       console.error(err);
-      alert('Failed to load users');
+      alert(t('error.load_failed'));
     }
   };
 
@@ -40,7 +42,7 @@ export default function AdminUsers() {
       fetchUsers();
     } catch (err) {
       console.error(err);
-      alert('Failed to update status');
+      alert(t('error.save_failed'));
     }
   };
 
@@ -53,16 +55,16 @@ export default function AdminUsers() {
       fetchUsers();
     } catch (err) {
       console.error(err);
-      alert('Failed to add user');
+      alert(t('error.save_failed'));
     }
   };
 
   return (
     <div className="admin-page">
       <div className="admin-header">
-        <h1><ShieldCheck size={28} /> System Staff Management</h1>
+        <h1><ShieldCheck size={28} /> {t('admin.users.title')}</h1>
         <button className="btn primary" onClick={() => setShowModal(true)}>
-          <UserPlus size={18} /> Add Staff Member
+          <UserPlus size={18} /> {t('admin.users.create')}
         </button>
       </div>
 
@@ -70,11 +72,11 @@ export default function AdminUsers() {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Hospital ID</th>
-              <th>Name</th>
-              <th>Role</th>
-              <th>Active Status</th>
-              <th>Actions</th>
+              <th>{t('admin.users.hospital_id')}</th>
+              <th>{t('common.name')}</th>
+              <th>{t('admin.users.role')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -83,22 +85,22 @@ export default function AdminUsers() {
                 <td>{u.hospitalId}</td>
                 <td>{u.name}</td>
                 <td>
-                  <span className={`role-badge ${u.role}`}>{u.role}</span>
+                  <span className={`role-badge ${u.role}`}>{t(`admin.users.role_${u.role}`) || u.role}</span>
                 </td>
                 <td>
                   {u.isActive ? (
-                    <span className="status-badge success"><CheckCircle size={14}/> Active</span>
+                    <span className="status-badge success"><CheckCircle size={14}/> {t('admin.users.active')}</span>
                   ) : (
-                    <span className="status-badge danger"><Ban size={14}/> Blocked</span>
+                    <span className="status-badge danger"><Ban size={14}/> {t('admin.users.inactive')}</span>
                   )}
                 </td>
                 <td>
                   {u.role !== 'admin' && (
-                    <button 
-                      className={`btn small ${u.isActive ? 'danger' : 'success'}`} 
+                    <button
+                      className={`btn small ${u.isActive ? 'danger' : 'success'}`}
                       onClick={() => toggleStatus(u.id)}
                     >
-                      {u.isActive ? 'Block User' : 'Unblock User'}
+                      {u.isActive ? t('common.inactive') : t('common.active')}
                     </button>
                   )}
                 </td>
@@ -111,44 +113,43 @@ export default function AdminUsers() {
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-card fade-in">
-            <h2>Add New Staff</h2>
+            <h2>{t('admin.users.create')}</h2>
             <form onSubmit={handleSubmit} className="admin-form">
               <div className="form-group">
-                <label>Hospital ID</label>
+                <label>{t('admin.users.hospital_id')}</label>
                 <input required value={formData.hospitalId} onChange={e => setFormData({...formData, hospitalId: e.target.value})} />
               </div>
               <div className="form-group">
-                <label>Full Name</label>
+                <label>{t('patient.name')}</label>
                 <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
               </div>
               <div className="form-group">
-                <label>National ID</label>
-                <input required value={formData.nationalId} onChange={handleNationalIdChange} maxLength={14} minLength={14} placeholder="14 رقم" />
+                <label>{t('admin.users.national_id')}</label>
+                <input required value={formData.nationalId} onChange={handleNationalIdChange} maxLength={14} minLength={14} placeholder="14 digits" />
                 {parsedStaff && (
-                  <p className="field-hint">العمر: {parsedStaff.age} — {parsedStaff.gender === 'Male' ? 'ذكر' : 'أنثى'}</p>
+                  <p className="field-hint">{parsedStaff.age} — {parsedStaff.gender === 'Male' ? t('common.male') : t('common.female')}</p>
                 )}
               </div>
               <div className="form-group">
-                <label>Phone Number</label>
+                <label>{t('admin.users.phone')}</label>
                 <input required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="e.g. 01012345678" />
               </div>
               <div className="form-group">
-                <label>Role</label>
+                <label>{t('admin.users.role')}</label>
                 <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                  <option value="admin">Admin</option>
-                  <option value="doctor">Doctor</option>
-                  <option value="nurse">Nurse</option>
-                  <option value="technician">Technician</option>
-                  <option value="reception">Reception</option>
+                  <option value="admin">{t('admin.users.role_admin')}</option>
+                  <option value="doctor">{t('admin.users.role_doctor')}</option>
+                  <option value="nurse">{t('admin.users.role_nurse')}</option>
+                  <option value="technician">{t('admin.users.role_technician')}</option>
                 </select>
               </div>
               <div className="form-group">
-                <label>Password</label>
+                <label>{t('admin.users.password')}</label>
                 <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn text" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn primary">Create User</button>
+                <button type="button" className="btn text" onClick={() => setShowModal(false)}>{t('common.cancel')}</button>
+                <button type="submit" className="btn primary">{t('admin.users.create')}</button>
               </div>
             </form>
           </div>

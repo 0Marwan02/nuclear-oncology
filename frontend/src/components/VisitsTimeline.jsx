@@ -26,7 +26,10 @@ const VisitsTimeline = ({ visits, onVisitUpdated }) => {
 const VisitItem = ({ visit, isLast, onUpdated }) => {
   const [expanded, setExpanded] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
-  const date = new Date(visit.visitDate);
+  const rawDate = visit.visitDate || visit.createdAt;
+  const date = rawDate ? new Date(rawDate) : null;
+  const validDate = date && !isNaN(date.getTime()) ? date : null;
+  const caseLabel = visit.caseId ? `Case: ${visit.caseId.substring(0, 8)}...` : (visit.category ? visit.category.replace(/_/g, ' ') : 'Visit');
 
   const handleSuccess = () => {
     setActiveModal(null);
@@ -43,8 +46,8 @@ const VisitItem = ({ visit, isLast, onUpdated }) => {
       <div className="timeline-content">
         <div className="visit-summary" onClick={() => setExpanded(!expanded)}>
           <div className="visit-date-header">
-            <span className="visit-date">{format(date, 'MMM dd, yyyy - HH:mm')}</span>
-            <span className="visit-id">Case: {visit.caseId.substring(0,8)}...</span>
+            <span className="visit-date">{validDate ? format(validDate, 'MMM dd, yyyy - HH:mm') : '—'}</span>
+            <span className="visit-id">{caseLabel}</span>
           </div>
           
           <div className="visit-brief">

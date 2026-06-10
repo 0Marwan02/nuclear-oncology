@@ -10,6 +10,7 @@ const {
   createRenal, getRenals, getRenal, updateRenal, getRenalHistory,
   createGastric, getGastrics, getGastric, updateGastric, getGastricHistory,
   createMeckel, getMeckels, getMeckel, updateMeckel, getMeckelHistory,
+  getAllScansForPatient,
   getScanStats
 } = require('../controllers/scanController');
 
@@ -19,6 +20,11 @@ router.use(auth);
 
 // Stats
 router.get('/stats', getScanStats);
+
+// Aggregate scan history for a patient (all 7 modalities). `both` is an alias
+// used by the history UI's sub-tabs.
+router.get('/all/patient/:patientId', getAllScansForPatient);
+router.get('/both/patient/:patientId', getAllScansForPatient);
 
 // PET-CT
 router.post('/petct', upload.single('scanFile'), createPETCT);

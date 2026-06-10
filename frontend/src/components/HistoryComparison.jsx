@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceArea } from 'recharts';
 import { Calendar, FileText, Scan, BarChart2, Plus, CheckCircle, X, ArrowUp, ArrowDown, ArrowRight } from 'lucide-react';
-import { getClinicHistory, getScanHistory, apiFetch } from '../utils/api';
+import { getScanHistory, apiFetch } from '../utils/api';
 import './HistoryComparison.css';
 
 const HistoryComparison = ({ patientId: initialPatientId, recordType: initialRecordType = 'all', initialView = 'timeline' }) => {
@@ -66,23 +66,11 @@ const HistoryComparison = ({ patientId: initialPatientId, recordType: initialRec
     try {
       setLoading(true);
       setError('');
-      let clinicData = [];
-      let scanData = [];
-
-      if (activeTab === 'clinic' || activeTab === 'all') {
-        const type = activeTab === 'clinic' ? subTab : 'both';
-        clinicData = await getClinicHistory(type, selectedPatientId);
-        clinicData = clinicData.map(r => ({ ...r, recordType: 'clinic', clinicType: r.type }));
-      }
-
-      if (activeTab === 'scan' || activeTab === 'all') {
-        const type = activeTab === 'scan' ? subTab : 'all';
-        scanData = await getScanHistory(type, selectedPatientId);
-        scanData = scanData.map(r => ({ ...r, recordType: 'scan', scanType: r.type }));
-      }
-
-      const allRecords = [...clinicData, ...scanData].sort((a, b) => new Date(b.date) - new Date(a.date));
-      setRecords(allRecords);
+      const type = activeTab === 'all' ? 'all' : subTab || activeTab;
+      const scanData = await getScanHistory(type, selectedPatientId);
+      const records = (Array.isArray(scanData) ? scanData : (scanData.records || []))
+        .map(r => ({ ...r, recordType: 'scan', scanType: r.type || r.scanType }));
+      setRecords(records.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt)));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -113,9 +101,7 @@ const HistoryComparison = ({ patientId: initialPatientId, recordType: initialRec
   };
 
   const getRecordColor = (record) => {
-    if (record.recordType === 'clinic') {
-      return record.clinicType === 'green' ? 'var(--success)' : 'var(--danger)';
-    } else {
+    {
       const scanColors = {
         'petct': 'var(--purple)',
         'psma': 'var(--info)',
@@ -129,44 +115,18 @@ const HistoryComparison = ({ patientId: initialPatientId, recordType: initialRec
   };
 
   const getRecordBadge = (record) => {
-    if (record.recordType === 'clinic') {
-      return record.clinicType === 'green' ? 'Green File (الملف الأخضر)' : 'Red File (الملف الأحمر)';
-    } else {
-      const scanLabels = {
-        'petct': 'PET/CT',
-        'psma': 'PSMA',
-        'thyroid': 'Thyroid',
-        'bone': 'Bone',
-        'renal': 'Renal',
-        'gastric': 'Gastric'
-      };
-      return scanLabels[record.scanType] || record.scanType;
-    }
+    const scanLabels = {
+      'petct': 'PET/CT', 'psma': 'PSMA', 'thyroid': 'Thyroid',
+      'bone': 'Bone', 'renal': 'Renal', 'gastric': 'Gastric', 'meckel': "Meckel's"
+    };
+    return scanLabels[record.scanType] || record.scanType || '—';
   };
 
   const getKeyMetrics = (record) => {
-    if (record.recordType === 'clinic') {
-      if (record.clinicType === 'green') {
-        return [
-          { label: 'Thyroglobulin', value: record.thyroglobulin },
-          { label: 'TSH', value: record.tsh },
-          { label: 'FT3', value: record.ft3 },
-          { label: 'FT4', value: record.ft4 }
-        ].filter(m => m.value != null);
-      } else {
-        return [
-          { label: 'TSH', value: record.tsh },
-          { label: 'FT3', value: record.ft3 },
-          { label: 'FT4', value: record.ft4 },
-          { label: 'Anti-TPO', value: record.antiTpo }
-        ].filter(m => m.value != null);
-      }
-    } else {
-      return [
-        { label: 'SUV Max', value: record.suvMax },
-        { label: 'Findings', value: record.findings?.substring(0, 50) }
-      ].filter(m => m.value != null);
-    }
+    return [
+      { label: 'SUV Max', value: record.suvMax },
+      { label: 'Impression', value: record.impression?.substring(0, 60) }
+    ].filter(m => m.value != null);
   };
 
   const chartData = useMemo(() => {
@@ -384,34 +344,13 @@ const HistoryComparison = ({ patientId: initialPatientId, recordType: initialRec
       )}
 
       <div className="tabs">
-        <button 
-          className={`tab ${activeTab === 'clinic' ? 'active' : ''}`}
-          onClick={() => setActiveTab('clinic')}
-        >
-          <FileText size={16} /> Clinics (عيادات)
-        </button>
-        <button 
-          className={`tab ${activeTab === 'scan' ? 'active' : ''}`}
-          onClick={() => setActiveTab('scan')}
-        >
+        <button className={`tab ${activeTab === 'scan' ? 'active' : ''}`} onClick={() => setActiveTab('scan')}>
           <Scan size={16} /> Scans (أشعة)
         </button>
-        <button 
-          className={`tab ${activeTab === 'all' ? 'active' : ''}`}
-          onClick={() => setActiveTab('all')}
-        >
-          All (الكل)
-        </button>
+        <button className={`tab ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')}>All (الكل)</button>
       </div>
 
-      {activeTab === 'clinic' && (
-        <div className="sub-tabs">
-          <button className={`sub-tab ${subTab === 'green' ? 'active' : ''}`} onClick={() => setSubTab('green')}>Green File (الملف الأخضر)</button>
-          <button className={`sub-tab ${subTab === 'red' ? 'active' : ''}`} onClick={() => setSubTab('red')}>Red File (الملف الأحمر)</button>
-          <button className={`sub-tab ${subTab === 'both' ? 'active' : ''}`} onClick={() => setSubTab('both')}>Both (كلاهما)</button>
-        </div>
-      )}
-      {activeTab === 'scan' && (
+      {(activeTab === 'scan' || activeTab === 'all') && (
         <div className="sub-tabs">
           <button className={`sub-tab ${subTab === 'all' ? 'active' : ''}`} onClick={() => setSubTab('all')}>All (الكل)</button>
           {scanTypes.map(type => (

@@ -1,5 +1,6 @@
 const prisma = require('../prisma');
 const { emitQueue } = require('../realtime');
+const { MODEL_FIELD_TYPES, TYPE_TO_MODEL } = require('../utils/scanFields');
 
 const MODEL_MAP = {
   visit: 'visit',
@@ -12,28 +13,25 @@ const MODEL_MAP = {
   meckel: 'scanMeckel',
 };
 
-// Sequential stations (المحطات المتتابعة):
-// Registered (reception Visit) -> Assessed (physician) -> Prepared (nurse)
-// -> Scanned (technician) -> Completed (physician report).
-const VALID_STATUSES = ['Registered', 'Assessed', 'Prepared', 'Scanned', 'Completed'];
+const VALID_STATUSES = ['Pending_Doctor', 'Pending_Nurse', 'Pending_Technical', 'Pending_Report', 'Completed'];
 
 const TRANSITION_RULES = {
-  Registered: { next: 'Assessed', role: 'doctor' },      // physician assessed the encounter
-  Assessed: { next: 'Prepared', role: 'nurse' },         // nurse prepared the patient
-  Prepared: { next: 'Scanned', role: 'technician' },     // technician injected & imaged
-  Scanned: { next: 'Completed', role: 'doctor' },        // physician signed the report
+  Pending_Doctor: { next: 'Pending_Nurse', role: 'doctor' },
+  Pending_Nurse:   { next: 'Pending_Technical', role: 'nurse' },
+  Pending_Technical: { next: 'Pending_Report', role: 'technician' },
+  Pending_Report: { next: 'Completed', role: 'doctor' }
 };
 
-// Which station room should be notified after a record reaches a given status.
 const NEXT_ROOM_FOR_STATUS = {
-  Assessed: 'nurse',
-  Prepared: 'technician',
-  Scanned: 'physician',
-  Completed: 'reception',
+  Pending_Nurse: 'nurse',
+  Pending_Technical: 'technician',
+  Pending_Report: 'physician',
+  Completed: 'nurse'
 };
 
 const PET_TYPES = ['petct', 'psma'];
-const HIGH_GLUCOSE_THRESHOLD = 200; // mg/dL — block PET/CT injection above this
+const GLUCOSE_REQUIRED_TYPES = ['petct', 'psma', 'gastric'];
+const HIGH_GLUCOSE_THRESHOLD = 200;
 
 const DOSE_FIELD = {
   petct: 'fdgDoseMCi',
@@ -63,7 +61,6 @@ const buildPrepData = (prep = {}) => {
   if (prep.bloodSugar != null && prep.bloodSugar !== '') data.prepBloodGlucose = parseFloat(prep.bloodSugar);
   if (prep.bloodGlucose != null && prep.bloodGlucose !== '') data.prepBloodGlucose = parseFloat(prep.bloodGlucose);
   if (prep.injectionSite) data.injectionSite = prep.injectionSite;
-  if (prep.cannulaSize) data.cannulaSize = prep.cannulaSize;
   if (prep.pregnancyStatus) data.pregnancyStatus = prep.pregnancyStatus;
   if (prep.nurseNotes) data.prepNurseNotes = prep.nurseNotes;
   return data;
@@ -87,11 +84,14 @@ const buildTechnicalData = (type, technical = {}) => {
   if (doseField && technical.dose != null && technical.dose !== '') {
     data[doseField] = parseFloat(technical.dose);
   }
+  if (technical.doseUnit) data.doseUnit = technical.doseUnit;
   if (technical.injectionTime) data.injectionTime = new Date(technical.injectionTime);
   if (technical.scanTime) {
     if (type === 'gastric') data.scanStartTime = new Date(technical.scanTime);
     else data.scanTime = new Date(technical.scanTime);
   }
+  if (technical.scanMode) data.scanMode = technical.scanMode;
+  if (technical.delayedImages != null) data.delayedImages = Boolean(technical.delayedImages);
   if (technical.notes) data.technicianNotes = technical.notes;
   return data;
 };
@@ -116,40 +116,18 @@ const logWorkflowAudit = async (tx, userId, tableName, recordId, action, oldValu
   });
 };
 
-// Error-prevention gates (منع الأخطاء). Returns an Arabic message string when
-// the transition must be blocked, or null when it is safe to proceed.
 const checkSafetyGate = async (type, nextStatus, record, prep = {}) => {
-  // Nurse confirm (Assessed -> Prepared): PET/CT must have blood sugar, and it
-  // must not be high — "لا يسمح بالانتقال للفني والسكر مرتفع".
-  if (nextStatus === 'Prepared' && PET_TYPES.includes(type)) {
-    const incoming = prep.bloodGlucose ?? prep.bloodSugar;
-    const glucose = (incoming != null && incoming !== '')
-      ? parseFloat(incoming)
-      : record.prepBloodGlucose;
-    if (glucose == null || Number.isNaN(glucose)) {
-      return 'يجب تسجيل نسبة السكر في الدم قبل إرسال المريض للفني (فحص PET/CT).';
-    }
-    if (glucose > HIGH_GLUCOSE_THRESHOLD) {
-      return `نسبة السكر مرتفعة (${glucose} mg/dL). لا يُسمح بالانتقال للفني حتى ينخفض السكر عن ${HIGH_GLUCOSE_THRESHOLD}.`;
+  if (nextStatus === 'Completed' && type !== 'visit') {
+    if (GLUCOSE_REQUIRED_TYPES.includes(type)) {
+      if (record.prepBloodGlucose == null) {
+        const label = type === 'gastric' ? 'Gastric Emptying' : 'PET/CT';
+        return `لا يمكن حقن الجرعة قبل تسجيل نسبة السكر في الدم (فحص ${label}).`;
+      }
+      if (PET_TYPES.includes(type) && record.prepBloodGlucose > HIGH_GLUCOSE_THRESHOLD) {
+        return `نسبة السكر مرتفعة (${record.prepBloodGlucose} mg/dL). لا يُسمح بالحقن حتى ينخفض السكر عن ${HIGH_GLUCOSE_THRESHOLD}.`;
+      }
     }
   }
-
-  // Technician confirm (Prepared -> Scanned) = the injection point. Block the
-  // radioactive dose until sugar (PET/CT) and contraception (females) are recorded.
-  if (nextStatus === 'Scanned' && type !== 'visit') {
-    if (PET_TYPES.includes(type) && (record.prepBloodGlucose == null)) {
-      return 'لا يمكن حقن الجرعة قبل تسجيل نسبة السكر في الدم.';
-    }
-    const patient = await prisma.patient.findUnique({
-      where: { id: record.patientId },
-      select: { gender: true },
-    });
-    const isFemale = patient?.gender === 'Female' || patient?.gender === 'أنثى';
-    if (isFemale && !record.pregnancyStatus) {
-      return 'لا يمكن حقن الجرعة لمريضة قبل تسجيل وسائل منع الحمل / تاريخ آخر دورة (LMP).';
-    }
-  }
-
   return null;
 };
 
@@ -174,7 +152,6 @@ const advanceWorkflow = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized workflow transition' });
     }
 
-    // Safety gates (admin may override).
     if (userRole !== 'admin') {
       const blocked = await checkSafetyGate(type, workflowStatus, record, prep);
       if (blocked) return res.status(422).json({ message: blocked });
@@ -182,19 +159,28 @@ const advanceWorkflow = async (req, res) => {
 
     let updateData = { workflowStatus };
 
-    if (workflowStatus === 'Prepared' && prep) {
+    if (workflowStatus === 'Pending_Technical' && prep) {
       updateData = type === 'visit'
         ? { ...updateData, ...buildVisitPrepData(prep) }
         : { ...updateData, ...buildPrepData(prep) };
     }
-    if (workflowStatus === 'Scanned' && technical && type !== 'visit') {
+    if (workflowStatus === 'Pending_Report' && technical && type !== 'visit') {
       updateData = { ...updateData, ...buildTechnicalData(type, technical) };
+      updateData.isLocked = true;
     }
-    if (workflowStatus === 'Completed' && report) {
+    if (workflowStatus === 'Completed' && report && type !== 'visit') {
       updateData = { ...updateData, ...buildReportData(report, req.user.id) };
     }
 
-    // Visit has no performer/reporter relations, so use a visit-safe include.
+    // Drop any key that isn't a real column on the target model (e.g. some scan
+    // types have no `scanMode`) so a stray field can never 500 the update.
+    const modelCols = MODEL_FIELD_TYPES[TYPE_TO_MODEL[type]];
+    if (modelCols) {
+      updateData = Object.fromEntries(
+        Object.entries(updateData).filter(([key]) => modelCols.has(key))
+      );
+    }
+
     const include = type === 'visit'
       ? { patient: { select: { id: true, name: true, nationalId: true, gender: true, birthDate: true } } }
       : scanInclude;
@@ -217,7 +203,6 @@ const advanceWorkflow = async (req, res) => {
       return updated;
     });
 
-    // Notify the next station's queue (live push).
     const nextRoom = NEXT_ROOM_FOR_STATUS[workflowStatus];
     if (nextRoom) {
       emitQueue(nextRoom, { event: 'advanced', status: workflowStatus, record: { ...result, scanType: type } });
@@ -332,12 +317,26 @@ const getPatientWorkflow = async (req, res) => {
   }
 };
 
-// Physician assessment queue: encounters opened by reception (Visit, Registered)
-// awaiting the physician to choose a scan sheet and record clinical data.
+const getRegisteredVisits = async (req, res) => {
+  try {
+    const visits = await prisma.visit.findMany({
+      where: { workflowStatus: 'Pending_Doctor' },
+      include: {
+        patient: { select: { id: true, name: true, nationalId: true, gender: true, birthDate: true, phone: true } },
+        recorder: { select: { id: true, name: true, role: true } },
+      },
+      orderBy: { visitDate: 'desc' },
+    });
+    res.json(visits.map((v) => ({ ...v, scanType: 'visit' })));
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 const getAssessmentQueue = async (req, res) => {
   try {
     const visits = await prisma.visit.findMany({
-      where: { workflowStatus: 'Registered' },
+      where: { workflowStatus: 'Pending_Nurse' },
       include: {
         patient: { select: { id: true, name: true, nationalId: true, gender: true, birthDate: true, phone: true } },
         recorder: { select: { id: true, name: true, role: true } },
@@ -356,5 +355,6 @@ module.exports = {
   getRecordsByStatus,
   getAllByStatus,
   getPatientWorkflow,
+  getRegisteredVisits,
   getAssessmentQueue,
 };

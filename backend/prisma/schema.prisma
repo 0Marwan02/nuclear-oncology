@@ -12,7 +12,7 @@ model User {
   hospitalId String    @unique
   nationalId String?
   name       String
-  role       String
+  role       String // Admin, Doctor, Nurse, Technical
   phone      String?
   gender     String?
   birthDate  DateTime?
@@ -27,82 +27,75 @@ model User {
   medications        Medication[]
   radiationDoses     RadiationDose[]
   auditLogs          AuditLog[]
-  medicalCases       MedicalCase[]
-  clinicGreenFiles   ClinicGreenFile[]
-  clinicRedFiles     ClinicRedFile[]
   scanPETCTs         ScanPETCT[]
-  scanPETCTReports   ScanPETCT[]       @relation("ScanPETCT_reporter")
+  scanPETCTReports   ScanPETCT[]      @relation("ScanPETCT_reporter")
   scanPSMAPETCTs     ScanPSMAPETCT[]
-  scanPSMAReports    ScanPSMAPETCT[]   @relation("ScanPSMA_reporter")
+  scanPSMAReports    ScanPSMAPETCT[]  @relation("ScanPSMA_reporter")
   scanThyroids       ScanThyroid[]
-  scanThyroidReports ScanThyroid[]     @relation("ScanThyroid_reporter")
+  scanThyroidReports ScanThyroid[]    @relation("ScanThyroid_reporter")
   scanBones          ScanBone[]
-  scanBoneReports    ScanBone[]        @relation("ScanBone_reporter")
+  scanBoneReports    ScanBone[]       @relation("ScanBone_reporter")
   scanRenals         ScanRenal[]
-  scanRenalReports   ScanRenal[]       @relation("ScanRenal_reporter")
+  scanRenalReports   ScanRenal[]      @relation("ScanRenal_reporter")
   scanGastrics       ScanGastric[]
-  scanGastricReports ScanGastric[]     @relation("ScanGastric_reporter")
+  scanGastricReports ScanGastric[]    @relation("ScanGastric_reporter")
   scanMeckels        ScanMeckel[]
-  scanMeckelReports  ScanMeckel[]      @relation("ScanMeckel_reporter")
-  appointments       Appointment[]
+  scanMeckelReports  ScanMeckel[]     @relation("ScanMeckel_reporter")
+  userPermissions    UserPermission[]
+  fieldAudits        FieldAudit[]
+}
+
+model UserPermission {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  permission String
+  granted    Boolean
+  grantedBy  String
+  grantedAt  DateTime @default(now())
+
+  @@unique([userId, permission])
 }
 
 model Patient {
-  id              String   @id @default(uuid())
-  nationalId      String   @unique
-  name            String
-  gender          String
-  birthDate       DateTime
-  phone           String
-  address         String
-  bloodType       String
-  maritalStatus   String?
-  referringDoctor String?
-  createdAt       DateTime @default(now())
-  createdBy       String
-  creator         User     @relation(fields: [createdBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  id                   String   @id @default(uuid())
+  nationalId           String   @unique
+  name                 String
+  gender               String
+  birthDate            DateTime
+  phone                String
+  address              String
+  bloodType            String
+  maritalStatus        String?
+  referringDoctor      String?
+  referringDoctorPhone String?
+  phone2               String?
+  category             String?  // PET_CT | PSMA_PET_CT | GAMMA | OTHER
+  subCategory          String?  // (GAMMA sub): Thyroid | Bone | Renal | Gastric | Meckel | Other
+  createdAt            DateTime @default(now())
+  createdBy            String
+  creator              User     @relation(fields: [createdBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
-  medicalCases     MedicalCase[]
-  visits           Visit[]
-  medications      Medication[]
-  clinicGreenFiles ClinicGreenFile[]
-  clinicRedFiles   ClinicRedFile[]
-  scanPETCTs       ScanPETCT[]
-  scanPSMAPETCTs   ScanPSMAPETCT[]
-  scanThyroids     ScanThyroid[]
-  scanBones        ScanBone[]
-  scanRenals       ScanRenal[]
-  scanGastrics     ScanGastric[]
-  scanMeckels      ScanMeckel[]
-  appointments     Appointment[]
-}
-
-model MedicalCase {
-  id           String   @id @default(uuid())
-  patientId    String
-  patient      Patient  @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  diagnosis    String
-  cancerType   String
-  cancerStage  String
-  protocolType String
-  startDate    DateTime
-  status       String
-  createdBy    String
-  creator      User     @relation(fields: [createdBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  createdAt    DateTime @default(now())
-
-  visits           Visit[]
-  radiationDoses   RadiationDose[]
-  clinicGreenFiles ClinicGreenFile[]
+  visits         Visit[]
+  medications    Medication[]
+  scanPETCTs     ScanPETCT[]
+  scanPSMAPETCTs ScanPSMAPETCT[]
+  scanThyroids   ScanThyroid[]
+  scanBones      ScanBone[]
+  scanRenals     ScanRenal[]
+  scanGastrics   ScanGastric[]
+  scanMeckels    ScanMeckel[]
 }
 
 model Visit {
-  id               String       @id @default(uuid())
-  patientId        String
-  patient          Patient      @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  caseId           String?
-  medicalCase      MedicalCase? @relation(fields: [caseId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  visitDate        DateTime     @default(now())
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  category    String // 'PET_CT', 'PSMA_PET_CT', 'GAMMA', 'OTHER'
+  subCategory String? // 'Thyroid', 'Bone', 'Renal', 'Gastric', 'Others'
+
+  visitDate        DateTime @default(now())
   weight           Float?
   height           Float?
   bloodGlucose     Float?
@@ -113,35 +106,20 @@ model Visit {
   generalCondition String?
   doctorNotes      String?
   nurseNotes       String?
-  workflowStatus   String       @default("Registered")
+  workflowStatus   String   @default("Pending_Doctor") // Pending_Doctor, Pending_Nurse, Pending_Technical, Completed
   recordedBy       String
-  recorder         User         @relation(fields: [recordedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  recorder         User     @relation(fields: [recordedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
-  labResults       LabResult[]
-  imagingResults   ImagingResult[]
-  radiationDoses   RadiationDose[]
-  clinicGreenFiles ClinicGreenFile[]
-  clinicRedFiles   ClinicRedFile[]
-  scanPETCTs       ScanPETCT[]
-  scanPSMAPETCTs   ScanPSMAPETCT[]
-  scanThyroids     ScanThyroid[]
-  scanBones        ScanBone[]
-  scanRenals       ScanRenal[]
-  scanGastrics     ScanGastric[]
-  scanMeckels      ScanMeckel[]
-}
-
-model Appointment {
-  id              String   @id @default(uuid())
-  patientId       String
-  patient         Patient  @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  appointmentDate DateTime
-  appointmentType String
-  notes           String?
-  status          String   @default("Scheduled")
-  createdBy       String
-  creator         User     @relation(fields: [createdBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  createdAt       DateTime @default(now())
+  labResults     LabResult[]
+  imagingResults ImagingResult[]
+  radiationDoses RadiationDose[]
+  scanPETCTs     ScanPETCT[]
+  scanPSMAPETCTs ScanPSMAPETCT[]
+  scanThyroids   ScanThyroid[]
+  scanBones      ScanBone[]
+  scanRenals     ScanRenal[]
+  scanGastrics   ScanGastric[]
+  scanMeckels    ScanMeckel[]
 }
 
 model LabResult {
@@ -188,17 +166,15 @@ model Medication {
 }
 
 model RadiationDose {
-  id             String      @id @default(uuid())
+  id             String   @id @default(uuid())
   visitId        String
-  visit          Visit       @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  caseId         String
-  medicalCase    MedicalCase @relation(fields: [caseId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  visit          Visit    @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   isotopeType    String
   doseMCi        Float
   cumulativeDose Float
   recordedBy     String
-  recorder       User        @relation(fields: [recordedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  createdAt      DateTime    @default(now())
+  recorder       User     @relation(fields: [recordedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  createdAt      DateTime @default(now())
 }
 
 model AuditLog {
@@ -213,275 +189,469 @@ model AuditLog {
   timestamp DateTime @default(now())
 }
 
-model ClinicGreenFile {
-  id                  String       @id @default(uuid())
-  patientId           String
-  patient             Patient      @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  visitId             String?
-  visit               Visit?       @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  caseId              String?
-  medicalCase         MedicalCase? @relation(fields: [caseId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  followUpDate        DateTime     @default(now())
-  thyroglobulin       Float?
-  antiTg              Float?
-  tsh                 Float?
-  ft3                 Float?
-  ft4                 Float?
-  radioiodineUptake   String?
-  wholeBodyScanResult String?
-  neckUltrasound      String?
-  stimulatedTg        Float?
-  treatmentPlan       String?
-  responseToTherapy   String?
-  recurrenceSigns     String?
-  physicianNotes      String?
-  createdBy           String
-  creator             User         @relation(fields: [createdBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+model FieldAudit {
+  id        String   @id @default(uuid())
+  tableName String
+  recordId  String
+  fieldName String
+  oldValue  String?
+  newValue  String?
+  updatedBy String
+  updater   User     @relation(fields: [updatedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  updatedAt DateTime @default(now())
 }
 
-model ClinicRedFile {
-  id                String   @id @default(uuid())
-  patientId         String
-  patient           Patient  @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  visitId           String?
-  visit             Visit?   @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  diseaseType       String
-  followUpDate      DateTime @default(now())
-  tsh               Float?
-  ft3               Float?
-  ft4               Float?
-  antiTpo           Float?
-  antiTg            Float?
-  trAb              Float?
-  thyroidVolume     Float?
-  rightLobeSize     String?
-  leftLobeSize      String?
-  nodulePresence    Boolean  @default(false)
-  noduleDetails     String?
-  symptoms          String?
-  currentMedication String?
-  doseAdjustment    String?
+model ScanPETCT {
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  visitId   String?
+  visit     Visit?  @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  // === DOCTOR SECTION ===
+  diagnosis   String?
+  petAim      String?
+  petAimOther String?
+  resusSide   String?
+  complaint   String?
+
+  contraceptiveStatus String?
+  lmpDate             DateTime?
+
+  surgeryHistory      String?
+  surgeryHistoryOther String?
+
+  radioYn           Boolean?
+  radioSite         String?
+  radioSessions     Int?
+  lastRadiationDate DateTime?
+
+  chemoYn       Boolean?
+  chemoSessions Int?
+  lastChemoDate DateTime?
+
+  gcsfGiven    Boolean?
+  gcsfLastDate DateTime?
+  gcsfNotes    String?
+
+  tumorMarkers String?
+
+  renalFunctionDate DateTime?
+  urea              Float?
+  ureaNote          String?
+  creatinine        Float?
+  creatinineNote    String?
+
+  contrastAllergy     Boolean?
+  contrastAllergyNote String?
+  dmHistory           Boolean?
+  dmMedicationType    String?
+  dmLastDoseDate      DateTime?
+  hypertension        Boolean?
+  hypertensionNote    String?
+
+  prevPetDate     DateTime?
+  prevPetFindings String?
+
+  ctMriYn       Boolean?
+  ctMriDate     DateTime?
+  ctMriFindings String?
+
+  // === NURSE SECTION ===
+  prepWeight       Float?
+  prepHeight       Float?
+  prepBloodGlucose Float?
+  injectionSite    String?
+  pregnancyStatus  String?
+  prepNurseNotes   String?
+
+  // === TECHNICIAN SECTION ===
+  fdgDoseMCi         Float?
+  injectionTime      DateTime?
+  scanTime           DateTime?
+  uptakeTime         Int?
+  delayedImages      Boolean   @default(false)
+  delayedImagesNotes String?
+
+  bodyRegion        String?
+  bloodSugar        Float?
+  suvMax            Float?
+  suvMean           Float?
+  lesionLocation    String?
+  lesionSize        String?
+  metastasisSign    Boolean  @default(false)
+  metastasisDetails String?
+  impression        String?
   physicianNotes    String?
-  createdBy         String
-  creator           User     @relation(fields: [createdBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  technicianNotes   String?
+  scanMode          String?
+  doseUnit          String   @default("mCi")
+  fileUrl           String?
+  workflowStatus    String   @default("Pending_Doctor")
+  isLocked          Boolean  @default(false)
+  performedBy       String
+  performer         User     @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  reportedBy        String?
+  reporter          User?    @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanPETCT_reporter")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
 
-model ScanPETCT {
-  id                        String    @id @default(uuid())
-  patientId                 String
-  patient                   Patient   @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  visitId                   String?
-  visit                     Visit?    @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  complaint                 String?
-  diagnosis                 String?
-  referralReason            String?
-  scanPurpose               String?
-  surgeryHistory            String?
-  chemoSessions             Int?
-  lastChemoDate             DateTime?
-  radiationSessions         Int?
-  lastRadiationDate         DateTime?
-  gcsfGiven                 Boolean?
-  tumorMarkers              String?
-  renalFunction             String?
-  pregnancyContraindication Boolean?
-  prepWeight                Float?
-  prepHeight                Float?
-  prepBloodGlucose          Float?
-  injectionSite             String?
-  cannulaSize               String?
-  pregnancyStatus           String?
-  prepNurseNotes            String?
-  fdgDoseMCi                Float?
-  injectionTime             DateTime?
-  scanTime                  DateTime?
-  bloodSugar                Float?
-  uptakeTime                Int?
-  bodyRegion                String?
-  suvMax                    Float?
-  suvMean                   Float?
-  lesionLocation            String?
-  lesionSize                String?
-  metastasisSign            Boolean   @default(false)
-  metastasisDetails         String?
-  impression                String?
-  physicianNotes            String?
-  technicianNotes           String?
-  fileUrl                   String?
-  workflowStatus            String    @default("Registered")
-  performedBy               String
-  performer                 User      @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  reportedBy                String?
-  reporter                  User?     @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanPETCT_reporter")
-  createdAt                 DateTime  @default(now())
-  updatedAt                 DateTime  @updatedAt
-}
-
 model ScanPSMAPETCT {
-  id                    String    @id @default(uuid())
-  patientId             String
-  patient               Patient   @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  visitId               String?
-  visit                 Visit?    @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  complaint             String?
-  diagnosis             String?
-  psaLevel              Float?
-  totalPSA              Float?
-  freePSA               Float?
-  psaHistory            String?
-  gleasonScore          String?
-  prepWeight            Float?
-  prepHeight            Float?
-  prepBloodGlucose      Float?
-  injectionSite         String?
-  cannulaSize           String?
-  pregnancyStatus       String?
-  prepNurseNotes        String?
-  ga68DoseMCi           Float?
-  injectionTime         DateTime?
-  scanTime              DateTime?
-  uptakeTime            Int?
-  prostateBedRecurrence Boolean   @default(false)
-  lymphNodeInvolvement  Boolean   @default(false)
-  boneMetastasis        Boolean   @default(false)
-  visceralMetastasis    Boolean   @default(false)
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  visitId   String?
+  visit     Visit?  @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  // === DOCTOR SECTION ===
+  diagnosis   String?
+  complaint   String?
+  petAim      String?
+  petAimOther String?
+  resusSide   String?
+
+  psaTestDate  DateTime?
+  totalPSA     Float?
+  freePSA      Float?
+  gleasonScore String?
+
+  surgeryHistory      String?
+  surgeryHistoryOther String?
+  surgeryDate         DateTime?
+
+  radioYn          Boolean?
+  radioSite        String?
+  radioSessions    Int?
+  radioLastSession DateTime?
+
+  chemoYn        Boolean?
+  chemoSessions  Int?
+  chemoLastCycle DateTime?
+
+  gcsfGiven    Boolean?
+  gcsfLastDate DateTime?
+  gcsfNotes    String?
+
+  tumorMarkers String?
+
+  renalFunctionDate DateTime?
+  urea              Float?
+  ureaNote          String?
+  creatinine        Float?
+  creatinineNote    String?
+
+  contrastAllergy     Boolean?
+  contrastAllergyNote String?
+  dmHistory           Boolean?
+  dmMedicationType    String?
+  dmLastDoseDate      DateTime?
+  hypertension        Boolean?
+  hypertensionNote    String?
+
+  prevPsmaDate     DateTime?
+  prevPsmaFindings String?
+
+  ctMriYn       Boolean?
+  ctMriDate     DateTime?
+  ctMriFindings String?
+
+  // === NURSE SECTION ===
+  prepWeight       Float?
+  prepHeight       Float?
+  prepBloodGlucose Float?
+  injectionSite    String?
+  prepNurseNotes   String?
+
+  // === TECHNICIAN SECTION ===
+  ga68DoseMCi        Float?
+  injectionTime      DateTime?
+  scanTime           DateTime?
+  uptakeTime         Int?
+  delayedImages      Boolean   @default(false)
+  delayedImagesNotes String?
+
+  prostateBedRecurrence Boolean  @default(false)
+  lymphNodeInvolvement  Boolean  @default(false)
+  boneMetastasis        Boolean  @default(false)
+  visceralMetastasis    Boolean  @default(false)
   lesionLocations       String?
   psmaExpression        String?
   impression            String?
   physicianNotes        String?
   technicianNotes       String?
+  scanMode              String?
+  doseUnit              String   @default("mCi")
   fileUrl               String?
-  workflowStatus        String    @default("Registered")
+  workflowStatus        String   @default("Pending_Doctor")
+  isLocked              Boolean  @default(false)
   performedBy           String
-  performer             User      @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  performer             User     @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
   reportedBy            String?
-  reporter              User?     @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanPSMA_reporter")
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  reporter              User?    @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanPSMA_reporter")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 
 model ScanThyroid {
-  id                 String    @id @default(uuid())
-  patientId          String
-  patient            Patient   @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  visitId            String?
-  visit              Visit?    @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  complaint          String?
-  diagnosis          String?
-  symptoms           String?
-  t3Level            Float?
-  t4Level            Float?
-  contrastCTDate     DateTime?
-  currentMedications String?
-  medicationStopped  Boolean?
-  medicationStopNotes String?
-  isotopeType        String
-  prepWeight         Float?
-  prepHeight         Float?
-  prepBloodGlucose   Float?
-  injectionSite      String?
-  cannulaSize        String?
-  pregnancyStatus    String?
-  prepNurseNotes     String?
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  visitId   String?
+  visit     Visit?  @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  scanSubType String @default("thyroid_scan")
+
+  // === DOCTOR SECTION ===
+  indication String?
+  complaint  String?
+  diagnosis  String?
+
+  symptomFlags String?
+
+  labDate       DateTime?
+  tshLevel      Float?
+  t3Level       Float?
+  t4Level       Float?
+  antibodies    String?
+  usDate        DateTime?
+  rightLobeSize String?
+  leftLobeSize  String?
+  isthmusSize   String?
+
+  contrastCTDate DateTime?
+
+  surgicalHistory     String?
+  surgeryHistoryOther String?
+
+  eltroxinDose       String?
+  eltroxinStopped    Boolean?
+  carbimazoleDose    String?
+  carbimazoleStopped Boolean?
+  otherDrugs         String?
+
+  familyHistory      Boolean?
+  familyHistoryNotes String?
+  smokingHistory     Boolean?
+
+  contraceptiveStatus String?
+  lmpDate             DateTime?
+  numChildren         Int?
+  youngestChildAge    Int?
+
+  exophthalmos Boolean?
+  pulseRate    Int?
+  localRtLobe  String?
+  localLtLobe  String?
+
+  // === NURSE SECTION ===
+  prepWeight       Float?
+  prepHeight       Float?
+  prepBloodGlucose Float?
+  injectionSite    String?
+  pregnancyStatus  String?
+  prepNurseNotes   String?
+
+  // === TECHNICIAN SECTION ===
+  isotopeType        String    @default("Tc-99m")
   isotopeDoseMCi     Float?
   injectionTime      DateTime?
   scanTime           DateTime?
-  tshLevel           Float?
+  delayedImages      Boolean   @default(false)
+  delayedImagesNotes String?
+
   withdrawalDays     Int?
   rightLobeUptake    Float?
   leftLobeUptake     Float?
   totalUptake        Float?
-  rightLobeSize      String?
-  leftLobeSize       String?
-  isthmusSize        String?
   glandPosition      String?
   hotNodules         String?
   coldNodules        String?
-  diffuseUptake      Boolean   @default(false)
-  heterogenousUptake Boolean   @default(false)
+  diffuseUptake      Boolean  @default(false)
+  heterogenousUptake Boolean  @default(false)
   diagramData        String?
   impression         String?
   physicianNotes     String?
   technicianNotes    String?
+  scanMode           String?
+  doseUnit           String   @default("mCi")
   fileUrl            String?
-  workflowStatus     String    @default("Registered")
+  workflowStatus     String   @default("Pending_Doctor")
+  isLocked           Boolean  @default(false)
   performedBy        String
-  performer          User      @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  performer          User     @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
   reportedBy         String?
-  reporter           User?     @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanThyroid_reporter")
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  reporter           User?    @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanThyroid_reporter")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 model ScanBone {
-  id                    String    @id @default(uuid())
-  patientId             String
-  patient               Patient   @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  visitId               String?
-  visit                 Visit?    @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  complaint             String?
-  diagnosis             String?
-  scanMode              String?
-  painComplaint         String?
-  hardwareHistory       String?
-  primaryCancer         String?
-  prepWeight            Float?
-  prepHeight            Float?
-  prepBloodGlucose      Float?
-  injectionSite         String?
-  cannulaSize           String?
-  pregnancyStatus       String?
-  prepNurseNotes        String?
-  tc99mDoseMCi          Float?
-  injectionTime         DateTime?
-  scanTime              DateTime?
-  uptakeTime            Int?
-  skeletalMetastasis    Boolean   @default(false)
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  visitId   String?
+  visit     Visit?  @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  // === DOCTOR SECTION ===
+  complaint     String?
+  diagnosis     String?
+  primaryCancer String?
+  scanMode      String?
+  painComplaint String?
+
+  contraceptiveStatus String?
+  lmpDate             DateTime?
+
+  surgeryHistory      String?
+  surgeryHistoryOther String?
+  surgeryDate         DateTime?
+
+  chemoYn        Boolean?
+  chemoSessions  Int?
+  chemoLastCycle DateTime?
+
+  radioYn          Boolean?
+  radioSite        String?
+  radioSessions    Int?
+  radioLastSession DateTime?
+
+  gcsfGiven    Boolean?
+  gcsfLastDate DateTime?
+  gcsfNotes    String?
+
+  boneProthesisYn   Boolean?
+  boneProthesisSite String?
+  boneProthesisDate DateTime?
+
+  traumaYn   Boolean?
+  traumaSite String?
+  traumaDate DateTime?
+
+  labDate      DateTime?
+  tumorMarkers String?
+
+  ctMriYn       Boolean?
+  ctMriDate     DateTime?
+  ctMriFindings String?
+
+  prevBoneScanDate     DateTime?
+  prevBoneScanFindings String?
+
+  // === NURSE SECTION ===
+  prepWeight       Float?
+  prepHeight       Float?
+  prepBloodGlucose Float?
+  injectionSite    String?
+  pregnancyStatus  String?
+  prepNurseNotes   String?
+
+  // === TECHNICIAN SECTION ===
+  tc99mDoseMCi       Float?
+  injectionTime      DateTime?
+  scanTime           DateTime?
+  uptakeTime         Int?
+  delayedImages      Boolean   @default(false)
+  delayedImagesNotes String?
+
+  skeletalMetastasis    Boolean  @default(false)
   metastasisLocations   String?
-  extraosseousUptake    Boolean   @default(false)
+  extraosseousUptake    Boolean  @default(false)
   extraosseousLocations String?
-  renalVisualization    Boolean   @default(true)
-  degenerativeChanges   Boolean   @default(false)
+  renalVisualization    Boolean  @default(true)
+  degenerativeChanges   Boolean  @default(false)
   traumaSites           String?
   impression            String?
   physicianNotes        String?
   technicianNotes       String?
+  doseUnit              String   @default("mCi")
   fileUrl               String?
-  workflowStatus        String    @default("Registered")
+  workflowStatus        String   @default("Pending_Doctor")
+  isLocked              Boolean  @default(false)
   performedBy           String
-  performer             User      @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  performer             User     @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
   reportedBy            String?
-  reporter              User?     @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanBone_reporter")
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  reporter              User?    @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanBone_reporter")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 
 model ScanRenal {
-  id                 String    @id @default(uuid())
-  patientId          String
-  patient            Patient   @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  visitId            String?
-  visit              Visit?    @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  complaint          String?
-  diagnosis          String?
-  renalComplaint     String?
-  dialysisHistory    String?
-  urineAnalysis      String?
-  scanType           String
-  prepWeight         Float?
-  prepHeight         Float?
-  prepBloodGlucose   Float?
-  injectionSite      String?
-  cannulaSize        String?
-  pregnancyStatus    String?
-  prepNurseNotes     String?
-  tc99mDoseMCi       Float?
-  injectionTime      DateTime?
-  scanTime           DateTime?
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  visitId   String?
+  visit     Visit?  @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  scanType String @default("DTPA")
+
+  // === DOCTOR SECTION ===
+  diagnosis         String?
+  complaint         String?
+  complaintDuration String?
+
+  symRtLoinPain  Boolean @default(false)
+  symLtLoinPain  Boolean @default(false)
+  symFever       Boolean @default(false)
+  symBurningMict Boolean @default(false)
+  symUrineColor  Boolean @default(false)
+  symHaematuria  Boolean @default(false)
+
+  htn Boolean?
+  dm  Boolean?
+
+  contraceptiveStatus String?
+  lmpDate             DateTime?
+
+  surgeryHistory      String?
+  surgeryHistoryOther String?
+  surgeryDate         DateTime?
+
+  dialysisYn       Boolean?
+  dialysisDuration String?
+  dialysisPerWeek  Int?
+
+  abdominalUsDate DateTime?
+
+  ctMriYn       Boolean?
+  ctMriDate     DateTime?
+  ctMriFindings String?
+
+  kidneyFunctionDate DateTime?
+  urea               Float?
+  creatinine         Float?
+  pusCells           String?
+  rbc                String?
+  specificGravity    String?
+  turbidity          String?
+
+  prevRenalScanDate     DateTime?
+  prevRenalScanFindings String?
+
+  // === NURSE SECTION ===
+  prepWeight       Float?
+  prepHeight       Float?
+  prepBloodGlucose Float?
+  injectionSite    String?
+  pregnancyStatus  String?
+  prepNurseNotes   String?
+
+  // === TECHNICIAN SECTION ===
+  dmsaDoseMCi       Float?
+  dmsaInjectionTime DateTime?
+  dmsaScanTime      DateTime?
+
+  dtpaDoseMCi       Float?
+  dtpaInjectionTime DateTime?
+  dtpaScanTime      DateTime?
+
+  tc99mDoseMCi  Float?
+  injectionTime DateTime?
+  scanTime      DateTime?
+
+  delayedImages      Boolean @default(false)
+  delayedImagesNotes String?
+
   furosemideGiven    Boolean   @default(false)
   furosemideTime     DateTime?
   aceInhibitorGiven  Boolean   @default(false)
@@ -495,95 +665,176 @@ model ScanRenal {
   leftTmax           Float?
   obstructionSign    Boolean   @default(false)
   refluxSign         Boolean   @default(false)
-  corticalScarring   Boolean   @default(false)
-  impression         String?
-  physicianNotes     String?
-  technicianNotes    String?
-  fileUrl            String?
-  workflowStatus     String    @default("Registered")
-  performedBy        String
-  performer          User      @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  reportedBy         String?
-  reporter           User?     @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanRenal_reporter")
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+
+  corticalScarring Boolean @default(false)
+
+  impression      String?
+  physicianNotes  String?
+  technicianNotes String?
+  scanMode        String?
+  doseUnit        String   @default("mCi")
+  fileUrl         String?
+  workflowStatus  String   @default("Pending_Doctor")
+  isLocked        Boolean  @default(false)
+  performedBy     String
+  performer       User     @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  reportedBy      String?
+  reporter        User?    @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanRenal_reporter")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model ScanGastric {
-  id               String    @id @default(uuid())
-  patientId        String
-  patient          Patient   @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  visitId          String?
-  visit            Visit?    @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  complaint        String?
-  diagnosis        String?
-  symptoms         String?
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  visitId   String?
+  visit     Visit?  @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  // === DOCTOR SECTION ===
+  diagnosis String?
+  complaint String?
+  symptoms  String?
+
+  contraceptiveStatus String?
+  lmpDate             DateTime?
+
+  surgeryHistory      String?
+  surgeryHistoryOther String?
+  surgeryDate         DateTime?
+
   endoscopyHistory String?
-  chronicDiseases  String?
-  mealType         String?
+  endoscopyDate    DateTime?
+
+  chronicDiseases String?
+  dmHistory       Boolean?
+
+  drugOpiates        Boolean?
+  drugNicotine       Boolean?
+  drugAntidepressant Boolean?
+
+  labDate DateTime?
+  labCa   Float?
+  labK    Float?
+  labTsh  Float?
+  labFt3  Float?
+  labFt4  Float?
+
+  abdominalUsDate DateTime?
+  ctMriYn         Boolean?
+  ctMriDate       DateTime?
+  ctMriFindings   String?
+
+  // === NURSE SECTION ===
   prepWeight       Float?
   prepHeight       Float?
   prepBloodGlucose Float?
   injectionSite    String?
-  cannulaSize      String?
   pregnancyStatus  String?
   prepNurseNotes   String?
-  tc99mDoseMCi     Float?
-  ingestionTime    DateTime?
-  scanStartTime    DateTime?
-  scanDuration     Int?
-  imageInterval    Int?
+  mealType         String?
+
+  // === TECHNICIAN SECTION ===
+  tc99mDoseMCi       Float?
+  ingestionTime      DateTime?
+  scanStartTime      DateTime?
+  scanDuration       Int?
+  imageInterval      Int?
+  delayedImages      Boolean   @default(false)
+  delayedImagesNotes String?
+
   halfEmptyingTime Float?
   retention1h      Float?
   retention2h      Float?
   retention4h      Float?
-  delayedEmptying  Boolean   @default(false)
-  rapidEmptying    Boolean   @default(false)
-  refluxSign       Boolean   @default(false)
-  aspirationSign   Boolean   @default(false)
+  delayedEmptying  Boolean  @default(false)
+  rapidEmptying    Boolean  @default(false)
+  refluxSign       Boolean  @default(false)
+  aspirationSign   Boolean  @default(false)
   impression       String?
   physicianNotes   String?
   technicianNotes  String?
+  scanMode         String?
+  doseUnit         String   @default("mCi")
   fileUrl          String?
-  workflowStatus   String    @default("Registered")
+  workflowStatus   String   @default("Pending_Doctor")
+  isLocked         Boolean  @default(false)
   performedBy      String
-  performer        User      @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  performer        User     @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
   reportedBy       String?
-  reporter         User?     @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanGastric_reporter")
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  reporter         User?    @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanGastric_reporter")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model ScanMeckel {
-  id               String    @id @default(uuid())
-  patientId        String
-  patient          Patient   @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  visitId          String?
-  visit            Visit?    @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  complaint        String?
-  diagnosis        String?
-  bleedingHistory  String?
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  visitId   String?
+  visit     Visit?  @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  // === DOCTOR SECTION ===
+  diagnosis       String?
+  complaint       String?
+  bleedingHistory String?
+
+  contraceptiveStatus String?
+  lmpDate             DateTime?
+
+  surgeryHistory      String?
+  surgeryHistoryOther String?
+  surgeryDate         DateTime?
+
+  endoscopyYn   Boolean?
+  endoscopyDate DateTime?
+  enemaHistory  Boolean?
+  bariumHistory Boolean?
+
+  abdominalUsDate DateTime?
+
+  ctMriYn       Boolean?
+  ctMriDate     DateTime?
+  ctMriFindings String?
+
+  // === NURSE SECTION ===
   prepWeight       Float?
   prepHeight       Float?
   prepBloodGlucose Float?
   injectionSite    String?
-  cannulaSize      String?
   pregnancyStatus  String?
   prepNurseNotes   String?
-  tc99mDoseMCi     Float?
-  injectionTime    DateTime?
-  scanTime         DateTime?
-  ectopicUptake    Boolean   @default(false)
-  uptakeLocation   String?
-  impression       String?
-  physicianNotes   String?
-  technicianNotes  String?
-  fileUrl          String?
-  workflowStatus   String    @default("Registered")
-  performedBy      String
-  performer        User      @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  reportedBy       String?
-  reporter         User?     @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanMeckel_reporter")
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+
+  // === TECHNICIAN SECTION ===
+  tc99mDoseMCi       Float?
+  injectionTime      DateTime?
+  scanTime           DateTime?
+  delayedImages      Boolean   @default(false)
+  delayedImagesNotes String?
+
+  ectopicUptake   Boolean  @default(false)
+  uptakeLocation  String?
+  impression      String?
+  physicianNotes  String?
+  technicianNotes String?
+  doseUnit        String   @default("mCi")
+  fileUrl         String?
+  workflowStatus  String   @default("Pending_Doctor")
+  isLocked        Boolean  @default(false)
+  performedBy     String
+  performer       User     @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  reportedBy      String?
+  reporter        User?    @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanMeckel_reporter")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model RolePermission {
+  id         String   @id @default(uuid())
+  role       String
+  permission String
+  grantedBy  String
+  grantedAt  DateTime @default(now())
+
+  @@unique([role, permission])
 }
