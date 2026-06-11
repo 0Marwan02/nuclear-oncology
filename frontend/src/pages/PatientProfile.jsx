@@ -7,11 +7,13 @@ import './PatientProfile.css';
 import VisitsTimeline from '../components/VisitsTimeline';
 import VisitCreate from '../components/VisitCreate';
 import { History, Scan, Clock } from 'lucide-react';
+import { useScanRole } from '../utils/scanSheet';
 
 const PatientProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { canCreate } = useScanRole();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,7 +65,7 @@ const PatientProfile = () => {
     <div className="patient-profile">
       <div className="profile-banner">
         <div className="profile-avatar">
-          {patient.name.charAt(0).toUpperCase()}
+          {(patient.name || '?').charAt(0).toUpperCase()}
         </div>
         <div className="profile-header-info">
           <h2>{patient.name}</h2>
@@ -97,7 +99,9 @@ const PatientProfile = () => {
           <button className="btn-secondary" onClick={() => navigate(`/patients/${id}/history`)}>
             <History size={16} /> {t('patient.view_history')}
           </button>
-          <button className="btn-primary" onClick={() => setShowVisitForm(true)}>{t('patient.add_visit')}</button>
+          {canCreate && (
+            <button className="btn-primary" onClick={() => setShowVisitForm(true)}>{t('patient.add_visit')}</button>
+          )}
         </div>
       </div>
 

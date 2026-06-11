@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp, ArrowLeftRight, Calendar, X } from 'lucide-react';
 import { getScanHistory } from '../utils/api';
+import { useTranslation } from '../i18n/index';
 import './PreviousScanBanner.css';
 
 const SCAN_TYPE_LABELS = {
@@ -20,7 +21,9 @@ const DIFF_COLORS = {
 };
 
 const ComparisonModal = ({ currentData, previousScan, scanType, onClose }) => {
+  const { t, lang } = useTranslation();
   const [expanded, setExpanded] = useState(true);
+  const dateLocale = lang === 'ar' ? 'ar-EG' : 'en-GB';
 
   const renderValue = (key, currentVal, prevVal) => {
     const isDifferent = JSON.stringify(currentVal) !== JSON.stringify(prevVal);
@@ -54,7 +57,7 @@ const ComparisonModal = ({ currentData, previousScan, scanType, onClose }) => {
 
   const formatValue = (val) => {
     if (val === undefined || val === null) return '-';
-    if (typeof val === 'boolean') return val ? 'نعم' : 'لا';
+    if (typeof val === 'boolean') return val ? t('common.yes') : t('common.no');
     if (typeof val === 'object') return JSON.stringify(val);
     return String(val);
   };
@@ -73,24 +76,24 @@ const ComparisonModal = ({ currentData, previousScan, scanType, onClose }) => {
         <div className="comparison-header">
           <h3>
             <ArrowLeftRight size={20} />
-            مقارنة الفحص الحالي مع السابق
+            {t('ehist.compare_title')}
           </h3>
           <button className="comparison-close" onClick={onClose}><X size={18} /></button>
         </div>
 
         <div className="comparison-scan-info">
           <div className="scan-info-card current">
-            <span className="scan-info-label">الفحص الحالي</span>
+            <span className="scan-info-label">{t('ehist.current_scan')}</span>
             <span className="scan-info-date">
               <Calendar size={14} />
-              {currentData?.createdAt ? new Date(currentData.createdAt).toLocaleDateString('ar-EG') : 'اليوم'}
+              {currentData?.createdAt ? new Date(currentData.createdAt).toLocaleDateString(dateLocale) : t('ehist.today')}
             </span>
           </div>
           <div className="scan-info-card previous">
-            <span className="scan-info-label">الفحص السابق</span>
+            <span className="scan-info-label">{t('ehist.previous_scan')}</span>
             <span className="scan-info-date">
               <Calendar size={14} />
-              {previousScan?.createdAt ? new Date(previousScan.createdAt).toLocaleDateString('ar-EG') : '-'}
+              {previousScan?.createdAt ? new Date(previousScan.createdAt).toLocaleDateString(dateLocale) : '-'}
             </span>
           </div>
         </div>
@@ -98,15 +101,15 @@ const ComparisonModal = ({ currentData, previousScan, scanType, onClose }) => {
         <div className="comparison-legend">
           <span className="legend-item">
             <span className="legend-dot" style={{ background: DIFF_COLORS.changed }} />
-            قيم متغيرة
+            {t('ehist.changed')}
           </span>
           <span className="legend-item">
             <span className="legend-dot" style={{ background: DIFF_COLORS.new }} />
-            قيم جديدة
+            {t('ehist.new')}
           </span>
           <span className="legend-item">
             <span className="legend-dot" style={{ background: DIFF_COLORS.removed }} />
-            قيم مفقودة
+            {t('ehist.removed')}
           </span>
         </div>
 
@@ -114,9 +117,9 @@ const ComparisonModal = ({ currentData, previousScan, scanType, onClose }) => {
           <table className="comparison-table">
             <thead>
               <tr>
-                <th>العنصر</th>
-                <th>الحالي</th>
-                <th>السابق</th>
+                <th>{t('ehist.field')}</th>
+                <th>{t('ehist.current')}</th>
+                <th>{t('ehist.prev')}</th>
               </tr>
             </thead>
             <tbody>
@@ -126,7 +129,7 @@ const ComparisonModal = ({ currentData, previousScan, scanType, onClose }) => {
         </div>
 
         <div className="comparison-footer">
-          <button className="comparison-done-btn" onClick={onClose}>تم</button>
+          <button className="comparison-done-btn" onClick={onClose}>{t('ehist.done')}</button>
         </div>
       </div>
     </div>
@@ -144,9 +147,10 @@ const KEY_FIELDS = {
 };
 
 const ScanCard = ({ scan, label, rank }) => {
+  const { t, lang } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const fields = KEY_FIELDS[scan.type || ''] || ['impression'];
-  const date = scan.createdAt ? new Date(scan.createdAt).toLocaleDateString('ar-EG') : '—';
+  const date = scan.createdAt ? new Date(scan.createdAt).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB') : '—';
 
   return (
     <div className={`ehist-card ehist-card--${rank}`}>
@@ -164,7 +168,7 @@ const ScanCard = ({ scan, label, rank }) => {
             <div key={k} className="ehist-field-row">
               <span className="ehist-field-key">{k}</span>
               <span className="ehist-field-val">
-                {typeof scan[k] === 'boolean' ? (scan[k] ? 'نعم' : 'لا') : String(scan[k])}
+                {typeof scan[k] === 'boolean' ? (scan[k] ? t('common.yes') : t('common.no')) : String(scan[k])}
               </span>
             </div>
           ) : null)}
@@ -175,6 +179,7 @@ const ScanCard = ({ scan, label, rank }) => {
 };
 
 const PreviousScanBanner = ({ patientId, scanType, currentScanData = {}, className = '' }) => {
+  const { t } = useTranslation();
   const [lastTwo, setLastTwo] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
@@ -203,7 +208,7 @@ const PreviousScanBanner = ({ patientId, scanType, currentScanData = {}, classNa
     fetchHistory();
   }, [fetchHistory]);
 
-  if (loading) return <div className="ehist-loading">جاري تحميل السجل السابق…</div>;
+  if (loading) return <div className="ehist-loading">{t('ehist.loading')}</div>;
   if (lastTwo.length === 0 || dismissed) return null;
 
   const scanLabel = SCAN_TYPE_LABELS[scanType] || scanType;
@@ -214,12 +219,12 @@ const PreviousScanBanner = ({ patientId, scanType, currentScanData = {}, classNa
         <div className="ehist-header">
           <div className="ehist-title">
             <AlertTriangle size={16} className="ehist-icon" />
-            <span>السجل الإلكتروني (E-History) — آخر {lastTwo.length} فحص {scanLabel}</span>
+            <span>{t('ehist.title', { count: lastTwo.length, scan: scanLabel })}</span>
           </div>
           <div className="ehist-actions">
             {lastTwo.length >= 2 && (
               <button className="ehist-compare-btn" onClick={() => setShowComparison(true)}>
-                <ArrowLeftRight size={14} /> مقارنة
+                <ArrowLeftRight size={14} /> {t('ehist.compare')}
               </button>
             )}
             <button className="ehist-dismiss-btn" onClick={() => setDismissed(true)}>
@@ -229,7 +234,7 @@ const PreviousScanBanner = ({ patientId, scanType, currentScanData = {}, classNa
         </div>
         <div className="ehist-cards">
           {lastTwo.map((scan, i) => (
-            <ScanCard key={scan.id || i} scan={scan} rank={i + 1} label={i === 0 ? 'الأحدث' : 'السابق'} />
+            <ScanCard key={scan.id || i} scan={scan} rank={i + 1} label={i === 0 ? t('ehist.latest') : t('ehist.previous')} />
           ))}
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { Outlet, Navigate, NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, User, LogOut, ShieldCheck, Activity, Building, Stethoscope, Syringe, UserCheck, FileText, ChevronDown, ChevronRight, Scan, Search, KeyRound, Languages } from 'lucide-react';
+import { Home, Users, User, LogOut, ShieldCheck, Activity, Building, Stethoscope, Syringe, UserCheck, FileText, ChevronDown, ChevronRight, Scan, Search, KeyRound, Languages, Settings as SettingsIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from '../i18n/index';
 import './Layout.css';
@@ -115,6 +115,14 @@ const Layout = () => {
           </div>
           <button
             className="lang-toggle-btn"
+            onClick={() => navigate('/settings')}
+            title={t('nav.settings')}
+          >
+            <SettingsIcon size={16} />
+            <span>{t('nav.settings')}</span>
+          </button>
+          <button
+            className="lang-toggle-btn"
             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
             title={t('nav.language')}
           >
@@ -131,10 +139,15 @@ const Layout = () => {
       <main className="main-content">
         <header className="main-header">
           <h1>{t('app.name')}</h1>
-          <div className="header-search-hint" title={t('global_search.hint')}>
+          <button
+            type="button"
+            className="header-search-hint"
+            title={t('global_search.hint')}
+            onClick={() => window.dispatchEvent(new CustomEvent('open-global-search'))}
+          >
             <Search size={18} />
             <kbd className="header-kbd">Ctrl+K</kbd>
-          </div>
+          </button>
         </header>
         <div className="content-area">
           <Outlet />

@@ -242,7 +242,7 @@ const PatientCreate = ({ onPatientCreated, onCancel }) => {
           <div className="pcm-form">
             <div className="pcm-step-content">
               <div className="patient-summary-card">
-                <div className="psc-avatar">{formData.name.charAt(0).toUpperCase()}</div>
+                <div className="psc-avatar">{(formData.name || '?').charAt(0).toUpperCase()}</div>
                 <div className="psc-info">
                   <h4>{formData.name}</h4>
                   <span>ID: {formData.nationalId} · {formData.gender} · {formData.bloodType}</span>

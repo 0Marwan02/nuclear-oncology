@@ -18,11 +18,15 @@ const STATUS_LABELS = {
   completed: 'Finished Cases',
 };
 
+const PAGE_SIZE = 50;
+
 const PatientsList = () => {
   const { t } = useTranslation();
   const [patients, setPatients] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,20 +38,42 @@ const PatientsList = () => {
     fetchPatients();
   }, [query, statusFilter, categoryFilter]);
 
+  const buildQuery = (skip) => {
+    const params = new URLSearchParams();
+    if (query)          params.set('q', query);
+    if (statusFilter)   params.set('status', statusFilter);
+    if (categoryFilter) params.set('category', categoryFilter);
+    params.set('take', String(PAGE_SIZE));
+    if (skip) params.set('skip', String(skip));
+    return params.toString();
+  };
+
   const fetchPatients = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (query)          params.set('q', query);
-      if (statusFilter)   params.set('status', statusFilter);
-      if (categoryFilter) params.set('category', categoryFilter);
-      const qs = params.toString();
-      const data = await apiFetch(`/patients${qs ? `?${qs}` : ''}`);
-      setPatients(Array.isArray(data) ? data : []);
+      const data = await apiFetch(`/patients?${buildQuery(0)}`);
+      const rows = Array.isArray(data) ? data : [];
+      setPatients(rows);
+      setHasMore(rows.length === PAGE_SIZE);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await apiFetch(`/patients?${buildQuery(patients.length)}`);
+      const rows = Array.isArray(data) ? data : [];
+      setPatients((prev) => [...prev, ...rows]);
+      setHasMore(rows.length === PAGE_SIZE);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -141,7 +167,7 @@ const PatientsList = () => {
           {patients.map(patient => (
             <div key={patient.id} className="patient-card" onClick={() => navigate(`/patients/${patient.id}`)}>
               <div className="card-header">
-                <div className="patient-avatar">{patient.name.charAt(0).toUpperCase()}</div>
+                <div className="patient-avatar">{(patient.name || '?').charAt(0).toUpperCase()}</div>
                 <div className="patient-info">
                   <h3>{patient.name}</h3>
                   <p>ID: {patient.nationalId}</p>
@@ -169,6 +195,14 @@ const PatientsList = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && hasMore && (
+        <div className="load-more-row">
+          <button className="btn-secondary" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? t('common.loading') : t('common.show_more')}
+          </button>
         </div>
       )}
 

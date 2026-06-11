@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminLogs from './pages/AdminLogs';
 import AdminPermissions from './pages/AdminPermissions';
+import Settings from './pages/Settings';
 
 import NurseDashboard from './pages/NurseDashboard';
 import TechnicianDashboard from './pages/TechnicianDashboard';
@@ -54,6 +55,7 @@ function App() {
           <Route path="scans/renal" element={<ScanRenal />} />
           <Route path="scans/gastric" element={<ScanGastric />} />
           <Route path="scans/meckel" element={<ScanMeckel />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="admin/users" element={<AdminUsers />} />
           <Route path="admin/logs" element={<AdminLogs />} />
           <Route path="admin/permissions" element={<AdminPermissions />} />

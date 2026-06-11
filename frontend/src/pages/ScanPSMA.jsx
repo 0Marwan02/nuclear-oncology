@@ -4,11 +4,12 @@ import { Search, FileText, Pill, Loader2, CheckCircle, AlertCircle, ChevronDown,
 import { format } from 'date-fns';
 import { createScan, getScanHistory, apiFetch } from '../utils/api';
 import { useScanRole, useAdminWorkflow, DoctorActionFooter, AdminDoneFooter, AdminReportFooter, RoleCreateNotice } from '../utils/scanSheet';
+import { usePrevHint } from '../components/PrevField';
 import './ScanThyroid.css';
 
 const MCi_TO_MBq = 37;
 
-const TODAY = new Date().toISOString().split('T')[0];
+const getToday = () => new Date().toISOString().split('T')[0];
 
 const emptyForm = () => ({
   // Doctor
@@ -81,6 +82,7 @@ const emptyForm = () => ({
 const emptyMarker = () => ({ name: '', value: '' });
 
 const ScanPSMA = () => {
+  const TODAY = getToday(); // fresh per render so the max-date never goes stale overnight
   const [searchParams] = useSearchParams();
   const currentUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
   const { isAdmin, canCreate } = useScanRole();
@@ -89,6 +91,7 @@ const ScanPSMA = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const Prev = usePrevHint('psma', selectedPatient?.id); // per-field previous-visit hints
 
   useEffect(() => {
     const pid = searchParams.get('patientId');
@@ -141,7 +144,7 @@ const ScanPSMA = () => {
     setTumorMarkers([emptyMarker()]);
     setError('');
     setSuccess('');
-    admin.reset();
+    admin.reset(p.id);
   };
 
   const mbq = formData.ga68DoseMCi ? (parseFloat(formData.ga68DoseMCi) * MCi_TO_MBq).toFixed(0) : '';
@@ -315,7 +318,7 @@ const ScanPSMA = () => {
 
             <div className="form-group">
               <label>Diagnosis</label>
-              <input type="text" value={formData.diagnosis} onChange={(e) => set('diagnosis', e.target.value)} placeholder="e.g., Prostate cancer, post-prostatectomy..." />
+              <><input type="text" value={formData.diagnosis} onChange={(e) => set('diagnosis', e.target.value)} placeholder="e.g., Prostate cancer, post-prostatectomy..." /><Prev k="diagnosis" /></>
               {prevScan?.diagnosis && <span className="prev-scan-hint">Prev: {prevScan.diagnosis}</span>}
             </div>
 
@@ -325,28 +328,28 @@ const ScanPSMA = () => {
               <div className="sheet-row">
                 <div className="form-group">
                   <label>Test Date</label>
-                  <input type="date" max={TODAY} value={formData.psaTestDate} onChange={(e) => set('psaTestDate', e.target.value)} />
+                  <><input type="date" max={TODAY} value={formData.psaTestDate} onChange={(e) => set('psaTestDate', e.target.value)} /><Prev k="psaTestDate" /></>
                 </div>
                 <div className="form-group">
                   <label>Total PSA <span className="unit">ng/mL</span></label>
-                  <input type="number" step="any" value={formData.totalPSA} onChange={(e) => set('totalPSA', e.target.value)} />
+                  <><input type="number" step="any" value={formData.totalPSA} onChange={(e) => set('totalPSA', e.target.value)} /><Prev k="totalPSA" /></>
                   {prevScan?.totalPSA != null && <span className="prev-scan-hint">Prev: {prevScan.totalPSA} ng/mL</span>}
                 </div>
                 <div className="form-group">
                   <label>Free PSA <span className="unit">ng/mL</span></label>
-                  <input type="number" step="any" value={formData.freePSA} onChange={(e) => set('freePSA', e.target.value)} />
+                  <><input type="number" step="any" value={formData.freePSA} onChange={(e) => set('freePSA', e.target.value)} /><Prev k="freePSA" /></>
                   {prevScan?.freePSA != null && <span className="prev-scan-hint">Prev: {prevScan.freePSA} ng/mL</span>}
                 </div>
                 <div className="form-group">
                   <label>Gleason Score</label>
-                  <input type="text" value={formData.gleasonScore} onChange={(e) => set('gleasonScore', e.target.value)} placeholder="e.g., 3+4=7" />
+                  <><input type="text" value={formData.gleasonScore} onChange={(e) => set('gleasonScore', e.target.value)} placeholder="e.g., 3+4=7" /><Prev k="gleasonScore" /></>
                 </div>
               </div>
             </div>
 
             <div className="form-group">
               <label>Complaint</label>
-              <textarea rows={2} value={formData.complaint} onChange={(e) => set('complaint', e.target.value)} />
+              <><textarea rows={2} value={formData.complaint} onChange={(e) => set('complaint', e.target.value)} /><Prev k="complaint" /></>
             </div>
 
             {/* Surgery */}
@@ -355,16 +358,16 @@ const ScanPSMA = () => {
               <div className="sheet-row">
                 <div className="form-group flex-2">
                   <label>Previous Surgery</label>
-                  <input type="text" value={formData.surgeryHistory} onChange={(e) => set('surgeryHistory', e.target.value)} placeholder="e.g., Radical prostatectomy..." />
+                  <><input type="text" value={formData.surgeryHistory} onChange={(e) => set('surgeryHistory', e.target.value)} placeholder="e.g., Radical prostatectomy..." /><Prev k="surgeryHistory" /></>
                 </div>
                 <div className="form-group">
                   <label>Date</label>
-                  <input type="date" max={TODAY} value={formData.surgeryDate} onChange={(e) => set('surgeryDate', e.target.value)} />
+                  <><input type="date" max={TODAY} value={formData.surgeryDate} onChange={(e) => set('surgeryDate', e.target.value)} /><Prev k="surgeryDate" /></>
                 </div>
               </div>
               <div className="form-group" style={{ marginTop: 8 }}>
                 <label>Others / Notes</label>
-                <textarea rows={2} value={formData.surgeryOthers} onChange={(e) => set('surgeryOthers', e.target.value)} placeholder="Additional surgical notes..." />
+                <><textarea rows={2} value={formData.surgeryOthers} onChange={(e) => set('surgeryOthers', e.target.value)} placeholder="Additional surgical notes..." /><Prev k="surgeryOthers" /></>
               </div>
             </div>
 
@@ -418,7 +421,7 @@ const ScanPSMA = () => {
               {formData.gcsfGiven && (
                 <div className="form-group" style={{ marginTop: 8 }}>
                   <label>G-CSF Notes</label>
-                  <textarea rows={2} value={formData.gcsfNotes} onChange={(e) => set('gcsfNotes', e.target.value)} placeholder="Drug name, dose, frequency..." />
+                  <><textarea rows={2} value={formData.gcsfNotes} onChange={(e) => set('gcsfNotes', e.target.value)} placeholder="Drug name, dose, frequency..." /><Prev k="gcsfNotes" /></>
                 </div>
               )}
             </div>
@@ -457,23 +460,23 @@ const ScanPSMA = () => {
                 <div className="form-group"><label>Date</label><input type="date" max={TODAY} value={formData.renalFunctionDate} onChange={(e) => set('renalFunctionDate', e.target.value)} /></div>
                 <div className="form-group">
                   <label>Urea <span className="unit">mg/dL</span></label>
-                  <input type="number" step="any" value={formData.urea} onChange={(e) => set('urea', e.target.value)} />
+                  <><input type="number" step="any" value={formData.urea} onChange={(e) => set('urea', e.target.value)} /><Prev k="urea" /></>
                   {prevScan?.urea != null && <span className="prev-scan-hint">Prev: {prevScan.urea} mg/dL</span>}
                 </div>
                 <div className="form-group">
                   <label>Creatinine <span className="unit">mg/dL</span></label>
-                  <input type="number" step="any" value={formData.creatinine} onChange={(e) => set('creatinine', e.target.value)} />
+                  <><input type="number" step="any" value={formData.creatinine} onChange={(e) => set('creatinine', e.target.value)} /><Prev k="creatinine" /></>
                   {prevScan?.creatinine != null && <span className="prev-scan-hint">Prev: {prevScan.creatinine} mg/dL</span>}
                 </div>
               </div>
               <div className="sheet-row" style={{ marginTop: 8 }}>
                 <div className="form-group flex-2">
                   <label>Urea Notes</label>
-                  <input type="text" value={formData.ureaNotes} onChange={(e) => set('ureaNotes', e.target.value)} placeholder="Clinical note..." />
+                  <><input type="text" value={formData.ureaNotes} onChange={(e) => set('ureaNotes', e.target.value)} placeholder="Clinical note..." /><Prev k="ureaNotes" /></>
                 </div>
                 <div className="form-group flex-2">
                   <label>Creatinine Notes</label>
-                  <input type="text" value={formData.creatinineNotes} onChange={(e) => set('creatinineNotes', e.target.value)} placeholder="e.g., elevated — CKD stage II..." />
+                  <><input type="text" value={formData.creatinineNotes} onChange={(e) => set('creatinineNotes', e.target.value)} placeholder="e.g., elevated — CKD stage II..." /><Prev k="creatinineNotes" /></>
                 </div>
               </div>
             </div>
@@ -483,7 +486,7 @@ const ScanPSMA = () => {
               <div className="subsection-title">Medical History</div>
 
               <label className="checkbox-label" style={{ marginBottom: 10 }}>
-                <input type="checkbox" checked={formData.contrastAllergy} onChange={(e) => set('contrastAllergy', e.target.checked)} />
+                <><input type="checkbox" checked={formData.contrastAllergy} onChange={(e) => set('contrastAllergy', e.target.checked)} /><Prev k="contrastAllergy" /></>
                 <span>History of Allergy to Contrast Media</span>
               </label>
 
@@ -496,7 +499,7 @@ const ScanPSMA = () => {
                 </div>
                 {formData.htnHistory && (
                   <div className="form-group flex-2" style={{ margin: 0 }}>
-                    <input type="text" value={formData.htnNotes} onChange={(e) => set('htnNotes', e.target.value)} placeholder="Medications, control status..." />
+                    <><input type="text" value={formData.htnNotes} onChange={(e) => set('htnNotes', e.target.value)} placeholder="Medications, control status..." /><Prev k="htnNotes" /></>
                   </div>
                 )}
               </div>
@@ -522,7 +525,7 @@ const ScanPSMA = () => {
                     </div>
                     <div className="form-group">
                       <label>Last Dose / Injection</label>
-                      <input type="datetime-local" value={formData.dmLastDoseDate} onChange={(e) => set('dmLastDoseDate', e.target.value)} />
+                      <><input type="datetime-local" value={formData.dmLastDoseDate} onChange={(e) => set('dmLastDoseDate', e.target.value)} /><Prev k="dmLastDoseDate" /></>
                     </div>
                   </div>
                 )}
@@ -536,7 +539,7 @@ const ScanPSMA = () => {
                 <div className="form-group"><label>Prev PSMA Date</label><input type="date" max={TODAY} value={formData.prevPsmaDate} onChange={(e) => set('prevPsmaDate', e.target.value)} /></div>
                 <div className="form-group flex-2">
                   <label>Site / Finding</label>
-                  <input type="text" value={formData.prevPsmaSite} onChange={(e) => set('prevPsmaSite', e.target.value)} />
+                  <><input type="text" value={formData.prevPsmaSite} onChange={(e) => set('prevPsmaSite', e.target.value)} /><Prev k="prevPsmaSite" /></>
                   {prevScan?.impression && <span className="prev-scan-hint">Prev impression: {prevScan.impression.slice(0, 80)}{prevScan.impression.length > 80 ? '…' : ''}</span>}
                 </div>
               </div>
@@ -590,7 +593,7 @@ const ScanPSMA = () => {
               <div className="form-group">
                 <label>Injected Dose (Ga-68 PSMA) <span className="required-star">*</span></label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input type="number" step="any" value={formData.ga68DoseMCi} onChange={(e) => set('ga68DoseMCi', e.target.value)} placeholder="4" style={{ width: 100 }} />
+                  <><input type="number" step="any" value={formData.ga68DoseMCi} onChange={(e) => set('ga68DoseMCi', e.target.value)} placeholder="4" style={{ width: 100 }} /><Prev k="ga68DoseMCi" /></>
                   <span className="dose-unit">mCi</span>
                   {mbq && <span className="dose-mbq">= {mbq} MBq</span>}
                 </div>
@@ -603,11 +606,11 @@ const ScanPSMA = () => {
             </div>
             <div className="sheet-subsection">
               <label className="checkbox-label">
-                <input type="checkbox" checked={formData.delayedImages} onChange={(e) => set('delayedImages', e.target.checked)} />
+                <><input type="checkbox" checked={formData.delayedImages} onChange={(e) => set('delayedImages', e.target.checked)} /><Prev k="delayedImages" /></>
                 <span>More Acquisition / Delayed Images</span>
               </label>
               {formData.delayedImages && (
-                <textarea rows={2} className="mt-8" value={formData.delayedImagesNotes} onChange={(e) => set('delayedImagesNotes', e.target.value)} placeholder="Describe..." />
+                <><textarea rows={2} className="mt-8" value={formData.delayedImagesNotes} onChange={(e) => set('delayedImagesNotes', e.target.value)} placeholder="Describe..." /><Prev k="delayedImagesNotes" /></>
               )}
             </div>
           </div>
@@ -633,7 +636,7 @@ const ScanPSMA = () => {
 
             <div className="form-group mt-12">
               <label>Lesion Locations</label>
-              <textarea rows={2} value={formData.lesionLocations} onChange={(e) => set('lesionLocations', e.target.value)} placeholder="Describe lesion sites..." />
+              <><textarea rows={2} value={formData.lesionLocations} onChange={(e) => set('lesionLocations', e.target.value)} placeholder="Describe lesion sites..." /><Prev k="lesionLocations" /></>
             </div>
 
             <div className="form-group">

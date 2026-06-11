@@ -4,6 +4,10 @@ const { parseEgyptianNationalId } = require('../utils/nationalIdParser');
 const { PERMISSION_CATALOG, DEFAULT_ROLE_PERMISSIONS, ALL_ROLES } = require('../utils/permissions');
 const { invalidateCache } = require('../utils/permissionCache');
 
+// All account roles (ALL_ROLES in utils/permissions.js only lists the
+// permission-matrix roles and excludes admin/reception).
+const ACCOUNT_ROLES = ['admin', 'doctor', 'nurse', 'technician', 'reception'];
+
 const getUsers = async (req, res) => {
   try {
     const users = await prisma.user.findMany({
@@ -23,6 +27,12 @@ const getUsers = async (req, res) => {
 const createUser = async (req, res) => {
   const { hospitalId, name, role, password, nationalId, phone } = req.body;
   try {
+    if (!ACCOUNT_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
     const existing = await prisma.user.findUnique({ where: { hospitalId } });
     if (existing) return res.status(400).json({ message: 'Hospital ID already exists' });
 
@@ -37,7 +47,7 @@ const createUser = async (req, res) => {
       }
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
       data: {
         hospitalId, name, role, password: hashedPassword,
@@ -81,8 +91,11 @@ const toggleUserStatus = async (req, res) => {
 
 const getAuditLogs = async (req, res) => {
   try {
+    const take = Math.min(parseInt(req.query.take, 10) || 100, 500);
+    const skip = Math.max(parseInt(req.query.skip, 10) || 0, 0);
     const logs = await prisma.auditLog.findMany({
-      take: 100,
+      take,
+      skip,
       orderBy: { timestamp: 'desc' },
       include: {
         user: { select: { name: true, role: true, hospitalId: true } },

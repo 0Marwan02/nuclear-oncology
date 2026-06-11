@@ -327,3 +327,10 @@
   color: #b91c1c;
   border: 1px solid #fecaca;
 }
+
+.scan-form-footer {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}

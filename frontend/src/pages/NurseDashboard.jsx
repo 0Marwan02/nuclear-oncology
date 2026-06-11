@@ -28,7 +28,7 @@ const NurseDashboard = () => {
       records.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       setRegisteredVisits(records.map((r) => ({ ...r, _scanType: r.scanType })));
     } catch (err) {
-      setError(err.message || 'فشل في تحميل البيانات');
+      setError(err.message || t('nurse.load_failed'));
     } finally {
       setLoading(false);
     }
@@ -54,9 +54,9 @@ const NurseDashboard = () => {
       setPreparedToday(prev => [...prev, visit]);
       setExpandedId(null);
       setPrepForm(emptyPrep);
-      setSuccessMsg('تم التحضير — المريض بانتظار الطبيب');
+      setSuccessMsg(t('nurse.prep_saved'));
     } catch (err) {
-      setError(err.message || 'فشل في حفظ التحضير');
+      setError(err.message || t('nurse.prep_save_failed'));
     } finally {
       setSubmittingId(null);
     }
@@ -91,7 +91,11 @@ const NurseDashboard = () => {
             </div>
 
             {registeredVisits.length === 0 ? (
-              <div className="empty-state">{t('nurse.no_patients')}</div>
+              <div className="empty-state">
+                <ClipboardList size={44} />
+                <p>{t('nurse.no_patients')}</p>
+                <span className="empty-state-hint">{t('nurse.empty_hint')}</span>
+              </div>
             ) : (
               <div className="patient-cards">
                 {registeredVisits.map(visit => {
@@ -116,9 +120,14 @@ const NurseDashboard = () => {
                       {expandedId === visit.id && (
                         <div className="card-body">
                           <WorkflowProgress status={visit.workflowStatus || 'Pending_Doctor'} />
+                          {visit.returnReason && (
+                            <div className="referral-notes">
+                              <strong>{t('workflow.returned_note')}:</strong> {visit.returnReason}
+                            </div>
+                          )}
                           {visit.doctorNotes && (
                             <div className="referral-notes">
-                              <strong>ملاحظات الإحالة:</strong> {visit.doctorNotes}
+                              <strong>{t('nurse.referral_notes')}:</strong> {visit.doctorNotes}
                             </div>
                           )}
                           <form onSubmit={(e) => { e.preventDefault(); handlePrepare(visit); }} className="prep-form">

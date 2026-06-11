@@ -1,0 +1,77 @@
+.btn-return {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, transform 120ms ease;
+}
+
+.btn-return:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-return:hover { background: #fef3c7; }
+}
+
+.btn-return--confirm {
+  border-color: #f59e0b;
+  background: #f59e0b;
+  color: #fff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-return--confirm:hover { background: #d97706; }
+}
+
+.btn-return--cancel {
+  border-color: #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+}
+
+.return-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  background: #fffbeb;
+}
+
+.return-panel-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.return-panel-error {
+  font-size: 12px;
+  color: #b91c1c;
+}
+
+.return-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.return-reason-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin: 8px 0;
+  border-radius: 9px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  font-size: 13px;
+}

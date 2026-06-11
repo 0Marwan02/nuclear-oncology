@@ -3,6 +3,7 @@ import { getWorkflowAll, advanceWorkflow } from '../utils/api';
 import { useQueueSocket } from '../utils/socket';
 import { useTranslation } from '../i18n/index';
 import WorkflowProgress from '../components/WorkflowProgress';
+import ReturnAction, { ReturnReasonBanner } from '../components/ReturnAction';
 import { format as fmtDate } from 'date-fns';
 import { ClipboardList, ChevronDown, ChevronUp, Eye, BarChart3, CheckCircle, AlertCircle, FolderOpen } from 'lucide-react';
 import { getFileInfo } from '../utils/fileColor';
@@ -41,7 +42,7 @@ const TechnicianDashboard = () => {
       combined.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       setPreparedRecords(combined.map((r) => ({ ...r, _scanType: r.scanType })));
     } catch (err) {
-      setError(err.message || 'فشل في تحميل البيانات');
+      setError(err.message || t('technician.load_failed'));
     } finally {
       setLoading(false);
     }
@@ -82,9 +83,9 @@ const TechnicianDashboard = () => {
       setScannedToday(prev => [...prev, record]);
       setExpandedId(null);
       setScanForm({ dose: '', doseUnit: 'mCi', injectionTime: '', scanTime: '', scanMode: 'Static', delayedImages: false, notes: '' });
-      setSuccessMsg('تم تسجيل الفحص بنجاح');
+      setSuccessMsg(t('technician.scan_saved'));
     } catch (err) {
-      setError(err.message || 'فشل في حفظ الفحص');
+      setError(err.message || t('technician.save_failed'));
     } finally {
       setSubmittingId(null);
     }
@@ -131,7 +132,11 @@ const TechnicianDashboard = () => {
 
       <div className="records-list">
         {filteredRecords.length === 0 ? (
-          <div className="empty-state"><AlertCircle size={48} /><p>{t('technician.no_scans')}</p></div>
+          <div className="empty-state">
+            <AlertCircle size={48} />
+            <p>{t('technician.no_scans')}</p>
+            <span className="empty-state-hint">{t('technician.empty_hint')}</span>
+          </div>
         ) : (
           filteredRecords.map(record => {
             const patient = record.patient || {};
@@ -175,6 +180,7 @@ const TechnicianDashboard = () => {
                 {expandedId === record.id && (
                   <div className="record-body">
                     <WorkflowProgress status={record.workflowStatus || 'Pending_Technical'} />
+                    <ReturnReasonBanner record={record} />
                     <form onSubmit={(e) => { e.preventDefault(); handleScanComplete(record); }} className="scan-form-inline">
                       <div className="form-row-3">
                         <div className="form-group">
@@ -246,10 +252,21 @@ const TechnicianDashboard = () => {
                         <label>{t('technician.technician_notes')}</label>
                         <textarea name="notes" value={scanForm.notes} onChange={handleFormChange} rows="2" className="touch-input" />
                       </div>
-                      <button type="submit" className="btn-scan-complete" disabled={submittingId === record.id}>
-                        <Eye size={18} />
-                        {submittingId === record.id ? t('technician.saving') : t('technician.confirm_scan')}
-                      </button>
+                      <div className="scan-form-footer">
+                        <button type="submit" className="btn-scan-complete" disabled={submittingId === record.id}>
+                          <Eye size={18} />
+                          {submittingId === record.id ? t('technician.saving') : t('technician.confirm_scan')}
+                        </button>
+                        <ReturnAction
+                          record={record}
+                          targetStatus="Pending_Nurse"
+                          label={t('workflow.return_to_nurse')}
+                          onReturned={(r) => {
+                            setPreparedRecords(prev => prev.filter(p => p.id !== r.id));
+                            setExpandedId(null);
+                          }}
+                        />
+                      </div>
                     </form>
                   </div>
                 )}

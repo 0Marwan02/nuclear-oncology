@@ -172,6 +172,9 @@
 }
 
 .header-search-hint {
+  background: transparent;
+  border: none;
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 6px;

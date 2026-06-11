@@ -14,7 +14,7 @@ const roomForRole = (role) => {
 /** Attach a Socket.IO server to an existing HTTP server. Call once at boot. */
 const initRealtime = (httpServer) => {
   io = new Server(httpServer, {
-    cors: { origin: true, credentials: true },
+    cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true },
   });
 
   // Authenticate every connection with the same JWT used by the REST API.

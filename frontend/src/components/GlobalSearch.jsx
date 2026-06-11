@@ -70,8 +70,13 @@ const GlobalSearch = () => {
         setOpen(false);
       }
     };
+    const handleOpenEvent = () => setOpen(true);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-global-search', handleOpenEvent);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-global-search', handleOpenEvent);
+    };
   }, [open]);
 
   useEffect(() => {
