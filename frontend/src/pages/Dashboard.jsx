@@ -123,7 +123,7 @@ const Dashboard = () => {
             {stats.recentPatients && stats.recentPatients.length > 0 ? (
               stats.recentPatients.map(patient => (
                 <div key={patient.id} className="recent-patient-item" onClick={() => navigate('/patients/' + patient.id)}>
-                  <div className="avatar-sm">{patient.name.charAt(0)}</div>
+                  <div className="avatar-sm">{(patient.name || '?').charAt(0)}</div>
                   <div className="patient-snippet">
                     <h4>{patient.name}</h4>
                     <span>ID: {patient.nationalId}</span>

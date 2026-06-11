@@ -19,8 +19,15 @@ export const apiFetch = async (endpoint, options = {}) => {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    // Session expired or token invalid — clear auth and return to login.
+    if (response.status === 401 && !endpoint.startsWith('/auth/login') && window.location.pathname !== '/login') {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      window.location.href = '/login';
+    }
     const error = new Error(data.message || 'API request failed');
     error.data = data;
+    error.status = response.status;
     throw error;
   }
 
@@ -83,12 +90,17 @@ export const getNurseQueue = () => {
   return apiFetch('/workflow/nurse-queue');
 };
 
-export const getAssessmentQueue = () => {
-  return apiFetch('/workflow/assessment-queue');
-};
-
 export const searchPatients = (query) => {
   return apiFetch(`/patients?q=${encodeURIComponent(query)}`);
+};
+
+export const getMe = () => apiFetch('/auth/me');
+
+export const updateMe = (data) => {
+  return apiFetch('/auth/me', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 };
 
 export const updateUser = (id, data) => {

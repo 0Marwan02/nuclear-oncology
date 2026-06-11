@@ -56,6 +56,8 @@ const createPatient = async (req, res) => {
 
 const listPatients = async (req, res) => {
   const { q, status, category } = req.query;
+  const take = Math.min(parseInt(req.query.take, 10) || 50, 200);
+  const skip = Math.max(parseInt(req.query.skip, 10) || 0, 0);
 
   try {
     const conditions = [];
@@ -87,9 +89,15 @@ const listPatients = async (req, res) => {
     const patients = await prisma.patient.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { visits: true } } }
+      include: { _count: { select: { visits: true } } },
+      take,
+      skip,
     });
 
+    // Plain-array response is kept for backwards compatibility; the pager
+    // reads X-Total-Count to know whether more pages exist.
+    const total = await prisma.patient.count({ where });
+    res.set('X-Total-Count', String(total));
     return res.json(patients);
   } catch (error) {
     return res.status(500).json({ message: 'Failed to list patients', error: error.message });

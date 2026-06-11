@@ -13,6 +13,11 @@ const withRoleClinical = (req, modelName, data) => ({
   ...filterBodyByRole(req.body, req.user?.role || 'guest', modelName),
 });
 
+// New scans may only enter the workflow at its start — never at a later
+// stage, which would skip the nurse/technician steps and the safety gates.
+const CREATE_STATUSES = new Set(['Pending_Doctor', 'Pending_Nurse']);
+const safeCreateStatus = (s) => (CREATE_STATUSES.has(s) ? s : 'Pending_Nurse');
+
 // ===== PET-CT =====
 
 const createPETCT = async (req, res) => {
@@ -39,7 +44,7 @@ const createPETCT = async (req, res) => {
           metastasisSign: metastasisSign ?? req.body.metastasisPresent ?? false,
           metastasisDetails, impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
+          workflowStatus: safeCreateStatus(req.body.workflowStatus),
         },
         include: scanInclude
       });
@@ -66,7 +71,7 @@ const getPETCTs = async (req, res) => {
   try {
     const where = patientId ? { patientId } : {};
     const scans = await prisma.scanPETCT.findMany({
-      where, orderBy: { createdAt: 'desc' }, include: scanInclude
+      where, orderBy: { createdAt: 'desc' }, include: scanInclude, take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -140,7 +145,8 @@ const getPETCTHistory = async (req, res) => {
     const scans = await prisma.scanPETCT.findMany({
       where: { patientId: req.params.patientId },
       orderBy: { createdAt: 'desc' },
-      include: scanInclude
+      include: scanInclude,
+      take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -176,7 +182,7 @@ const createPSMAPETCT = async (req, res) => {
           visceralMetastasis: visceralMetastasis ?? false,
           lesionLocations, psmaExpression, impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
+          workflowStatus: safeCreateStatus(req.body.workflowStatus),
         },
         include: scanInclude
       });
@@ -203,7 +209,7 @@ const getPSMAPETCTs = async (req, res) => {
   try {
     const where = patientId ? { patientId } : {};
     const scans = await prisma.scanPSMAPETCT.findMany({
-      where, orderBy: { createdAt: 'desc' }, include: scanInclude
+      where, orderBy: { createdAt: 'desc' }, include: scanInclude, take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -277,7 +283,8 @@ const getPSMAPETCTHistory = async (req, res) => {
     const scans = await prisma.scanPSMAPETCT.findMany({
       where: { patientId: req.params.patientId },
       orderBy: { createdAt: 'desc' },
-      include: scanInclude
+      include: scanInclude,
+      take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -315,7 +322,7 @@ const createThyroid = async (req, res) => {
           diagramData: typeof diagramData === 'object' ? JSON.stringify(diagramData) : diagramData,
           impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
+          workflowStatus: safeCreateStatus(req.body.workflowStatus),
         },
         include: scanInclude
       });
@@ -342,7 +349,7 @@ const getThyroids = async (req, res) => {
   try {
     const where = patientId ? { patientId } : {};
     const scans = await prisma.scanThyroid.findMany({
-      where, orderBy: { createdAt: 'desc' }, include: scanInclude
+      where, orderBy: { createdAt: 'desc' }, include: scanInclude, take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -419,7 +426,8 @@ const getThyroidHistory = async (req, res) => {
     const scans = await prisma.scanThyroid.findMany({
       where: { patientId: req.params.patientId },
       orderBy: { createdAt: 'desc' },
-      include: scanInclude
+      include: scanInclude,
+      take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -458,7 +466,7 @@ const createBone = async (req, res) => {
           degenerativeChanges: degenerativeChanges ?? false,
           traumaSites, impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
+          workflowStatus: safeCreateStatus(req.body.workflowStatus),
         },
         include: scanInclude
       });
@@ -485,7 +493,7 @@ const getBones = async (req, res) => {
   try {
     const where = patientId ? { patientId } : {};
     const scans = await prisma.scanBone.findMany({
-      where, orderBy: { createdAt: 'desc' }, include: scanInclude
+      where, orderBy: { createdAt: 'desc' }, include: scanInclude, take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -561,7 +569,8 @@ const getBoneHistory = async (req, res) => {
     const scans = await prisma.scanBone.findMany({
       where: { patientId: req.params.patientId },
       orderBy: { createdAt: 'desc' },
-      include: scanInclude
+      include: scanInclude,
+      take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -602,7 +611,7 @@ const createRenal = async (req, res) => {
           corticalScarring: corticalScarring ?? false,
           impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
+          workflowStatus: safeCreateStatus(req.body.workflowStatus),
         },
         include: scanInclude
       });
@@ -629,7 +638,7 @@ const getRenals = async (req, res) => {
   try {
     const where = patientId ? { patientId } : {};
     const scans = await prisma.scanRenal.findMany({
-      where, orderBy: { createdAt: 'desc' }, include: scanInclude
+      where, orderBy: { createdAt: 'desc' }, include: scanInclude, take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -709,7 +718,8 @@ const getRenalHistory = async (req, res) => {
     const scans = await prisma.scanRenal.findMany({
       where: { patientId: req.params.patientId },
       orderBy: { createdAt: 'desc' },
-      include: scanInclude
+      include: scanInclude,
+      take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -747,7 +757,7 @@ const createGastric = async (req, res) => {
           aspirationSign: aspirationSign ?? false,
           impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
+          workflowStatus: safeCreateStatus(req.body.workflowStatus),
         },
         include: scanInclude
       });
@@ -774,7 +784,7 @@ const getGastrics = async (req, res) => {
   try {
     const where = patientId ? { patientId } : {};
     const scans = await prisma.scanGastric.findMany({
-      where, orderBy: { createdAt: 'desc' }, include: scanInclude
+      where, orderBy: { createdAt: 'desc' }, include: scanInclude, take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -851,7 +861,8 @@ const getGastricHistory = async (req, res) => {
     const scans = await prisma.scanGastric.findMany({
       where: { patientId: req.params.patientId },
       orderBy: { createdAt: 'desc' },
-      include: scanInclude
+      include: scanInclude,
+      take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -884,7 +895,7 @@ const createMeckel = async (req, res) => {
           uptakeLocation,
           impression, physicianNotes,
           fileUrl, performedBy: req.user.id, reportedBy,
-          workflowStatus: req.body.workflowStatus || 'Pending_Doctor',
+          workflowStatus: safeCreateStatus(req.body.workflowStatus),
         },
         include: scanInclude,
       });
@@ -908,7 +919,7 @@ const getMeckels = async (req, res) => {
   try {
     const where = patientId ? { patientId } : {};
     const scans = await prisma.scanMeckel.findMany({
-      where, orderBy: { createdAt: 'desc' }, include: scanInclude,
+      where, orderBy: { createdAt: 'desc' }, include: scanInclude, take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -971,6 +982,7 @@ const getMeckelHistory = async (req, res) => {
       where: { patientId: req.params.patientId },
       orderBy: { createdAt: 'desc' },
       include: scanInclude,
+      take: 100,
     });
     return res.json(scans);
   } catch (error) {
@@ -1001,6 +1013,7 @@ const getAllScansForPatient = async (req, res) => {
           where: { patientId },
           orderBy: { createdAt: 'desc' },
           include: scanInclude,
+          take: 100,
         });
         return rows.map((r) => ({ ...r, scanType: type, type, date: r.createdAt }));
       })

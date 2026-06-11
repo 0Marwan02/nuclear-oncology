@@ -4,10 +4,11 @@ import { Search, FileText, Microscope, Loader2, CheckCircle, AlertCircle, Chevro
 import { format } from 'date-fns';
 import { createScan, getScanHistory, apiFetch } from '../utils/api';
 import { useScanRole, useAdminWorkflow, DoctorActionFooter, AdminDoneFooter, AdminReportFooter, RoleCreateNotice } from '../utils/scanSheet';
+import { usePrevHint } from '../components/PrevField';
 import './ScanThyroid.css';
 
 const MCi_TO_MBq = 37;
-const TODAY = new Date().toISOString().split('T')[0];
+const getToday = () => new Date().toISOString().split('T')[0];
 
 const emptyForm = () => ({
   // Doctor
@@ -46,6 +47,7 @@ const emptyForm = () => ({
 });
 
 const ScanMeckel = () => {
+  const TODAY = getToday(); // fresh per render so the max-date never goes stale overnight
   const [searchParams] = useSearchParams();
   const { isAdmin, canCreate } = useScanRole();
   const admin = useAdminWorkflow('meckel');
@@ -53,6 +55,7 @@ const ScanMeckel = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const Prev = usePrevHint('meckel', selectedPatient?.id); // per-field previous-visit hints
 
   useEffect(() => {
     const pid = searchParams.get('patientId');
@@ -103,7 +106,7 @@ const ScanMeckel = () => {
     setFormData(emptyForm());
     setError('');
     setSuccess('');
-    admin.reset();
+    admin.reset(p.id);
   };
 
   const isFemale = selectedPatient?.gender?.toLowerCase() === 'female';
@@ -237,15 +240,15 @@ const ScanMeckel = () => {
 
             <div className="form-group">
               <label>Indication / Complaint</label>
-              <textarea rows={2} value={formData.complaint} onChange={(e) => set('complaint', e.target.value)} placeholder="Abdominal pain, vomiting, nausea, bleeding..." />
+              <><textarea rows={2} value={formData.complaint} onChange={(e) => set('complaint', e.target.value)} placeholder="Abdominal pain, vomiting, nausea, bleeding..." /><Prev k="complaint" /></>
             </div>
             <div className="form-group">
               <label>Diagnosis</label>
-              <input type="text" value={formData.diagnosis} onChange={(e) => set('diagnosis', e.target.value)} placeholder="e.g., Meckel's diverticulum, lower GI bleed..." />
+              <><input type="text" value={formData.diagnosis} onChange={(e) => set('diagnosis', e.target.value)} placeholder="e.g., Meckel's diverticulum, lower GI bleed..." /><Prev k="diagnosis" /></>
             </div>
             <div className="form-group">
               <label>Bleeding History</label>
-              <textarea rows={2} value={formData.bleedingHistory} onChange={(e) => set('bleedingHistory', e.target.value)} placeholder="Describe bleeding history..." />
+              <><textarea rows={2} value={formData.bleedingHistory} onChange={(e) => set('bleedingHistory', e.target.value)} placeholder="Describe bleeding history..." /><Prev k="bleedingHistory" /></>
             </div>
 
             {/* Contraception */}
@@ -265,7 +268,7 @@ const ScanMeckel = () => {
                   {formData.contraceptiveStatus === 'married' && (
                     <div className="form-group">
                       <label>Date of LMP</label>
-                      <input type="date" max={TODAY} value={formData.lmpDate} onChange={(e) => set('lmpDate', e.target.value)} />
+                      <><input type="date" max={TODAY} value={formData.lmpDate} onChange={(e) => set('lmpDate', e.target.value)} /><Prev k="lmpDate" /></>
                     </div>
                   )}
                 </div>
@@ -277,11 +280,11 @@ const ScanMeckel = () => {
               <div className="sheet-row">
                 <div className="form-group flex-2">
                   <label>Previous Surgery</label>
-                  <input type="text" value={formData.surgeryHistory} onChange={(e) => set('surgeryHistory', e.target.value)} placeholder="Describe..." />
+                  <><input type="text" value={formData.surgeryHistory} onChange={(e) => set('surgeryHistory', e.target.value)} placeholder="Describe..." /><Prev k="surgeryHistory" /></>
                 </div>
                 <div className="form-group">
                   <label>Date</label>
-                  <input type="date" max={TODAY} value={formData.surgeryDate} onChange={(e) => set('surgeryDate', e.target.value)} />
+                  <><input type="date" max={TODAY} value={formData.surgeryDate} onChange={(e) => set('surgeryDate', e.target.value)} /><Prev k="surgeryDate" /></>
                 </div>
               </div>
             </div>
@@ -301,11 +304,11 @@ const ScanMeckel = () => {
               </div>
               <div className="sheet-row" style={{ gap: 32, marginTop: 8 }}>
                 <label className="checkbox-label">
-                  <input type="checkbox" checked={formData.enemaHistory} onChange={(e) => set('enemaHistory', e.target.checked)} />
+                  <><input type="checkbox" checked={formData.enemaHistory} onChange={(e) => set('enemaHistory', e.target.checked)} /><Prev k="enemaHistory" /></>
                   <span>History of Enema</span>
                 </label>
                 <label className="checkbox-label">
-                  <input type="checkbox" checked={formData.bariumHistory} onChange={(e) => set('bariumHistory', e.target.checked)} />
+                  <><input type="checkbox" checked={formData.bariumHistory} onChange={(e) => set('bariumHistory', e.target.checked)} /><Prev k="bariumHistory" /></>
                   <span>History of Barium Study</span>
                 </label>
               </div>
@@ -345,7 +348,7 @@ const ScanMeckel = () => {
               <div className="form-group">
                 <label>Injected Dose <span className="required-star">*</span></label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input type="number" step="any" value={formData.tc99mDoseMCi} onChange={(e) => set('tc99mDoseMCi', e.target.value)} placeholder="10" style={{ width: 100 }} />
+                  <><input type="number" step="any" value={formData.tc99mDoseMCi} onChange={(e) => set('tc99mDoseMCi', e.target.value)} placeholder="10" style={{ width: 100 }} /><Prev k="tc99mDoseMCi" /></>
                   <span className="dose-unit">mCi</span>
                   {mbq && <span className="dose-mbq">= {mbq} MBq</span>}
                 </div>
@@ -371,11 +374,11 @@ const ScanMeckel = () => {
 
             <div className="sheet-subsection">
               <label className="checkbox-label">
-                <input type="checkbox" checked={formData.delayedImages} onChange={(e) => set('delayedImages', e.target.checked)} />
+                <><input type="checkbox" checked={formData.delayedImages} onChange={(e) => set('delayedImages', e.target.checked)} /><Prev k="delayedImages" /></>
                 <span>More Acquisition / Delayed Images</span>
               </label>
               {formData.delayedImages && (
-                <textarea rows={2} className="mt-8" value={formData.delayedImagesNotes} onChange={(e) => set('delayedImagesNotes', e.target.value)} placeholder="Describe..." />
+                <><textarea rows={2} className="mt-8" value={formData.delayedImagesNotes} onChange={(e) => set('delayedImagesNotes', e.target.value)} placeholder="Describe..." /><Prev k="delayedImagesNotes" /></>
               )}
             </div>
           </div>
@@ -387,14 +390,14 @@ const ScanMeckel = () => {
             <div className="section-role-badge results-badge">Results</div>
 
             <label className="checkbox-label" style={{ marginBottom: 12 }}>
-              <input type="checkbox" checked={formData.ectopicUptake} onChange={(e) => set('ectopicUptake', e.target.checked)} />
+              <><input type="checkbox" checked={formData.ectopicUptake} onChange={(e) => set('ectopicUptake', e.target.checked)} /><Prev k="ectopicUptake" /></>
               <span>Ectopic Uptake</span>
             </label>
 
             {formData.ectopicUptake && (
               <div className="form-group">
                 <label>Uptake Location</label>
-                <input type="text" value={formData.uptakeLocation} onChange={(e) => set('uptakeLocation', e.target.value)} placeholder="e.g., RIF / mid-abdomen..." />
+                <><input type="text" value={formData.uptakeLocation} onChange={(e) => set('uptakeLocation', e.target.value)} placeholder="e.g., RIF / mid-abdomen..." /><Prev k="uptakeLocation" /></>
               </div>
             )}
 

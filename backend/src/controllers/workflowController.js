@@ -22,6 +22,24 @@ const TRANSITION_RULES = {
   Pending_Report: { next: 'Completed', role: 'doctor' }
 };
 
+// Send-back (rejection) transitions: one step backwards, with a mandatory
+// reason. Pending_Nurse is the entry point, so it has no backward step.
+const RETURN_RULES = {
+  Pending_Report: { prev: 'Pending_Technical', role: 'doctor' },
+  Pending_Technical: { prev: 'Pending_Nurse', role: 'technician' },
+};
+
+const isReturnTransition = (currentStatus, nextStatus) => {
+  const rule = RETURN_RULES[currentStatus];
+  return Boolean(rule && rule.prev === nextStatus);
+};
+
+const assertReturn = (userRole, currentStatus, nextStatus) => {
+  if (userRole === 'admin') return true;
+  const rule = RETURN_RULES[currentStatus];
+  return rule && rule.prev === nextStatus && rule.role === userRole;
+};
+
 const NEXT_ROOM_FOR_STATUS = {
   Pending_Nurse: 'nurse',
   Pending_Technical: 'technician',
@@ -54,12 +72,25 @@ const assertTransition = (userRole, currentStatus, nextStatus) => {
   return rule && rule.next === nextStatus && rule.role === userRole;
 };
 
+// NaN and Invalid Date must never reach Prisma — skip the field instead.
+const safeFloat = (val) => {
+  const n = parseFloat(val);
+  return isNaN(n) ? undefined : n;
+};
+const safeDate = (val) => {
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? undefined : d;
+};
+const assign = (data, key, val) => {
+  if (val !== undefined) data[key] = val;
+};
+
 const buildPrepData = (prep = {}) => {
   const data = {};
-  if (prep.weight != null && prep.weight !== '') data.prepWeight = parseFloat(prep.weight);
-  if (prep.height != null && prep.height !== '') data.prepHeight = parseFloat(prep.height);
-  if (prep.bloodSugar != null && prep.bloodSugar !== '') data.prepBloodGlucose = parseFloat(prep.bloodSugar);
-  if (prep.bloodGlucose != null && prep.bloodGlucose !== '') data.prepBloodGlucose = parseFloat(prep.bloodGlucose);
+  if (prep.weight != null && prep.weight !== '') assign(data, 'prepWeight', safeFloat(prep.weight));
+  if (prep.height != null && prep.height !== '') assign(data, 'prepHeight', safeFloat(prep.height));
+  if (prep.bloodSugar != null && prep.bloodSugar !== '') assign(data, 'prepBloodGlucose', safeFloat(prep.bloodSugar));
+  if (prep.bloodGlucose != null && prep.bloodGlucose !== '') assign(data, 'prepBloodGlucose', safeFloat(prep.bloodGlucose));
   if (prep.injectionSite) data.injectionSite = prep.injectionSite;
   if (prep.pregnancyStatus) data.pregnancyStatus = prep.pregnancyStatus;
   if (prep.nurseNotes) data.prepNurseNotes = prep.nurseNotes;
@@ -68,10 +99,10 @@ const buildPrepData = (prep = {}) => {
 
 const buildVisitPrepData = (prep = {}) => {
   const data = {};
-  if (prep.weight != null && prep.weight !== '') data.weight = parseFloat(prep.weight);
-  if (prep.height != null && prep.height !== '') data.height = parseFloat(prep.height);
-  if (prep.bloodSugar != null && prep.bloodSugar !== '') data.bloodGlucose = parseFloat(prep.bloodSugar);
-  if (prep.bloodGlucose != null && prep.bloodGlucose !== '') data.bloodGlucose = parseFloat(prep.bloodGlucose);
+  if (prep.weight != null && prep.weight !== '') assign(data, 'weight', safeFloat(prep.weight));
+  if (prep.height != null && prep.height !== '') assign(data, 'height', safeFloat(prep.height));
+  if (prep.bloodSugar != null && prep.bloodSugar !== '') assign(data, 'bloodGlucose', safeFloat(prep.bloodSugar));
+  if (prep.bloodGlucose != null && prep.bloodGlucose !== '') assign(data, 'bloodGlucose', safeFloat(prep.bloodGlucose));
   if (prep.injectionSite) data.injectionSite = prep.injectionSite;
   if (prep.pregnancyStatus) data.pregnancyStatus = prep.pregnancyStatus;
   if (prep.nurseNotes) data.nurseNotes = prep.nurseNotes;
@@ -82,13 +113,13 @@ const buildTechnicalData = (type, technical = {}) => {
   const data = {};
   const doseField = DOSE_FIELD[type];
   if (doseField && technical.dose != null && technical.dose !== '') {
-    data[doseField] = parseFloat(technical.dose);
+    assign(data, doseField, safeFloat(technical.dose));
   }
   if (technical.doseUnit) data.doseUnit = technical.doseUnit;
-  if (technical.injectionTime) data.injectionTime = new Date(technical.injectionTime);
+  if (technical.injectionTime) assign(data, 'injectionTime', safeDate(technical.injectionTime));
   if (technical.scanTime) {
-    if (type === 'gastric') data.scanStartTime = new Date(technical.scanTime);
-    else data.scanTime = new Date(technical.scanTime);
+    if (type === 'gastric') assign(data, 'scanStartTime', safeDate(technical.scanTime));
+    else assign(data, 'scanTime', safeDate(technical.scanTime));
   }
   if (technical.scanMode) data.scanMode = technical.scanMode;
   if (technical.delayedImages != null) data.delayedImages = Boolean(technical.delayedImages);
@@ -134,7 +165,7 @@ const checkSafetyGate = async (type, nextStatus, record, prep = {}) => {
 const advanceWorkflow = async (req, res) => {
   try {
     const { type, id } = req.params;
-    const { workflowStatus, prep, technical, report } = req.body;
+    const { workflowStatus, prep, technical, report, returnReason } = req.body;
     const userRole = req.user.role;
 
     const modelName = MODEL_MAP[type];
@@ -148,16 +179,34 @@ const advanceWorkflow = async (req, res) => {
     const record = await prisma[modelName].findUnique({ where: { id } });
     if (!record) return res.status(404).json({ message: 'Record not found' });
 
-    if (!assertTransition(userRole, record.workflowStatus, workflowStatus)) {
+    const returning = isReturnTransition(record.workflowStatus, workflowStatus);
+
+    if (returning) {
+      if (!assertReturn(userRole, record.workflowStatus, workflowStatus)) {
+        return res.status(403).json({ message: 'Unauthorized workflow transition' });
+      }
+      if (!returnReason || !String(returnReason).trim()) {
+        return res.status(400).json({ message: 'A reason is required to return a scan' });
+      }
+    } else if (!assertTransition(userRole, record.workflowStatus, workflowStatus)) {
       return res.status(403).json({ message: 'Unauthorized workflow transition' });
     }
 
-    if (userRole !== 'admin') {
+    if (!returning && userRole !== 'admin') {
       const blocked = await checkSafetyGate(type, workflowStatus, record, prep);
       if (blocked) return res.status(422).json({ message: blocked });
     }
 
     let updateData = { workflowStatus };
+
+    if (returning && type !== 'visit') {
+      updateData.returnReason = `${req.user.name || userRole}: ${String(returnReason).trim()}`;
+      // Re-open the record so the previous station can edit it again.
+      updateData.isLocked = false;
+    } else if (type !== 'visit') {
+      // A normal forward step clears any old rejection note.
+      updateData.returnReason = null;
+    }
 
     if (workflowStatus === 'Pending_Technical' && prep) {
       updateData = type === 'visit'
@@ -333,22 +382,6 @@ const getRegisteredVisits = async (req, res) => {
   }
 };
 
-const getAssessmentQueue = async (req, res) => {
-  try {
-    const visits = await prisma.visit.findMany({
-      where: { workflowStatus: 'Pending_Nurse' },
-      include: {
-        patient: { select: { id: true, name: true, nationalId: true, gender: true, birthDate: true, phone: true } },
-        recorder: { select: { id: true, name: true, role: true } },
-      },
-      orderBy: { visitDate: 'desc' },
-    });
-    res.json(visits.map((v) => ({ ...v, scanType: 'visit' })));
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
-
 module.exports = {
   advanceWorkflow,
   updateWorkflowStatus,
@@ -356,5 +389,4 @@ module.exports = {
   getAllByStatus,
   getPatientWorkflow,
   getRegisteredVisits,
-  getAssessmentQueue,
 };

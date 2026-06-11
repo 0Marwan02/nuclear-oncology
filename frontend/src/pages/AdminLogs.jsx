@@ -5,21 +5,40 @@ import { Activity, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import './Admin.css';
 
+const PAGE_SIZE = 100;
+
 export default function AdminLogs() {
   const { t } = useTranslation();
   const [logs, setLogs] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const data = await apiFetch('/admin/audit-logs');
+        const data = await apiFetch(`/admin/audit-logs?take=${PAGE_SIZE}`);
         setLogs(data);
+        setHasMore(data.length === PAGE_SIZE);
       } catch (err) {
         console.error(err);
       }
     };
     fetchLogs();
   }, []);
+
+  const loadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await apiFetch(`/admin/audit-logs?take=${PAGE_SIZE}&skip=${logs.length}`);
+      setLogs((prev) => [...prev, ...data]);
+      setHasMore(data.length === PAGE_SIZE);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   return (
     <div className="admin-page">
@@ -46,16 +65,18 @@ export default function AdminLogs() {
                   {format(new Date(log.timestamp), 'PP pp')}
                 </td>
                 <td>
-                  <strong>{log.user.name}</strong>
+                  <strong>{log.user?.name || '—'}</strong>
                   <br />
-                  <span className={`role-badge ${log.user.role}`}>{t(`admin.users.role_${log.user.role}`) || log.user.role}</span>
+                  {log.user?.role && (
+                    <span className={`role-badge ${log.user.role}`}>{t(`admin.users.role_${log.user.role}`) || log.user.role}</span>
+                  )}
                 </td>
                 <td>
                   <span className={`action-badge ${log.action.toLowerCase()}`}>{log.action}</span>
                 </td>
                 <td>
                   {log.tableName} <br/>
-                  <small className="mono">{log.recordId.substring(0,8)}...</small>
+                  <small className="mono">{(log.recordId || '').substring(0,8)}...</small>
                 </td>
                 <td>
                   <details className="log-details">
@@ -72,6 +93,13 @@ export default function AdminLogs() {
             )}
           </tbody>
         </table>
+        {hasMore && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '14px 0' }}>
+            <button className="btn-secondary" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? t('common.loading') : t('common.show_more')}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

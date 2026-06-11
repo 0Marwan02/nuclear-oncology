@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Loader2, FileText } from 'lucide-react';
-import { advanceWorkflow } from './api';
+import { advanceWorkflow, getPatientWorkflow } from './api';
 
 // Read the logged-in user from local storage.
 export const getAuthUser = () => {
@@ -32,10 +32,30 @@ export const useAdminWorkflow = (scanType) => {
   const [advancing, setAdvancing] = useState(false);
   const [error, setError] = useState('');
 
-  const reset = () => {
+  // Progress flags implied by a scan already sitting at a given status.
+  const PROGRESS_AT_STATUS = {
+    Pending_Nurse: { doctor: true, nurse: false, tech: false, report: false },
+    Pending_Technical: { doctor: true, nurse: true, tech: false, report: false },
+    Pending_Report: { doctor: true, nurse: true, tech: true, report: false },
+  };
+
+  // Reset local state; if a patient is given, restore any in-flight scan of
+  // this type from the server so a remount can't create a duplicate.
+  const reset = async (patientId) => {
     setScanId(null);
     setProgress({ doctor: false, nurse: false, tech: false, report: false });
     setError('');
+    if (!patientId) return;
+    try {
+      const wf = await getPatientWorkflow(patientId);
+      const inFlight = (wf?.scans?.[scanType] || []).find((s) => s.workflowStatus !== 'Completed');
+      if (inFlight && PROGRESS_AT_STATUS[inFlight.workflowStatus]) {
+        setScanId(inFlight.id);
+        setProgress(PROGRESS_AT_STATUS[inFlight.workflowStatus]);
+      }
+    } catch {
+      // Restore is best-effort; a failure just leaves the sheet in create mode.
+    }
   };
   const onCreated = (id) => {
     setScanId(id);

@@ -6,6 +6,7 @@ import { createScan, getScanHistory, apiFetch } from '../utils/api';
 import ThyroidDiagram from '../components/ThyroidDiagram';
 import ThyroidDiagramViewer from '../components/ThyroidDiagramViewer';
 import { useScanRole, useAdminWorkflow, DoctorActionFooter, AdminDoneFooter, AdminReportFooter, RoleCreateNotice } from '../utils/scanSheet';
+import { usePrevHint } from '../components/PrevField';
 import './ScanThyroid.css';
 
 const MCi_TO_MBq = 37;
@@ -31,7 +32,7 @@ const THYROTOXIC_SYMPTOMS = [
 
 const GLAND_POSITIONS = ['Normal', 'High', 'Low', 'Ectopic'];
 
-const TODAY = new Date().toISOString().split('T')[0];
+const getToday = () => new Date().toISOString().split('T')[0];
 
 const emptyForm = () => ({
   scanSubType: 'thyroid_scan',
@@ -104,6 +105,7 @@ const emptyForm = () => ({
 });
 
 const ScanThyroid = () => {
+  const TODAY = getToday(); // fresh per render so the max-date never goes stale overnight
   const [searchParams] = useSearchParams();
   const { isAdmin, canCreate } = useScanRole();
   const admin = useAdminWorkflow('thyroid');
@@ -111,6 +113,7 @@ const ScanThyroid = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const Prev = usePrevHint('thyroid', selectedPatient?.id); // per-field previous-visit hints
   const [formData, setFormData] = useState(emptyForm());
 
   useEffect(() => {
@@ -167,7 +170,7 @@ const ScanThyroid = () => {
     setFormData(emptyForm());
     setError('');
     setSuccess('');
-    admin.reset();
+    admin.reset(p.id);
   };
 
   const fetchHistory = async () => {
@@ -396,7 +399,7 @@ const ScanThyroid = () => {
             <div className="sheet-row">
               <div className="form-group full-width">
                 <label>Indication / Complaint <span className="hint">— onset / course / duration</span></label>
-                <textarea rows={2} placeholder="e.g. Hyperthyroidism — 6 months, progressive, worsening..." value={formData.indication} onChange={(e) => set('indication', e.target.value)} />
+                <><textarea rows={2} placeholder="e.g. Hyperthyroidism — 6 months, progressive, worsening..." value={formData.indication} onChange={(e) => set('indication', e.target.value)} /><Prev k="indication" /></>
               </div>
             </div>
 
@@ -420,38 +423,38 @@ const ScanThyroid = () => {
               <div className="sheet-row">
                 <div className="form-group">
                   <label>LABs Date</label>
-                  <input type="date" max={TODAY} value={formData.labDate} onChange={(e) => set('labDate', e.target.value)} />
+                  <><input type="date" max={TODAY} value={formData.labDate} onChange={(e) => set('labDate', e.target.value)} /><Prev k="labDate" /></>
                 </div>
                 <div className="form-group">
                   <label>TSH <span className="unit">(mIU/L)</span></label>
-                  <input type="number" step="any" placeholder="e.g. 0.04" value={formData.tshLevel} onChange={(e) => set('tshLevel', e.target.value)} />
+                  <><input type="number" step="any" placeholder="e.g. 0.04" value={formData.tshLevel} onChange={(e) => set('tshLevel', e.target.value)} /><Prev k="tshLevel" /></>
                 </div>
                 <div className="form-group">
                   <label>T3 <span className="unit">(nmol/L)</span></label>
-                  <input type="number" step="any" placeholder="" value={formData.t3Level} onChange={(e) => set('t3Level', e.target.value)} />
+                  <><input type="number" step="any" placeholder="" value={formData.t3Level} onChange={(e) => set('t3Level', e.target.value)} /><Prev k="t3Level" /></>
                 </div>
                 <div className="form-group">
                   <label>T4 <span className="unit">(nmol/L)</span></label>
-                  <input type="number" step="any" placeholder="" value={formData.t4Level} onChange={(e) => set('t4Level', e.target.value)} />
+                  <><input type="number" step="any" placeholder="" value={formData.t4Level} onChange={(e) => set('t4Level', e.target.value)} /><Prev k="t4Level" /></>
                 </div>
                 <div className="form-group">
                   <label>Antibodies <span className="hint">(Anti-TPO / Anti-Tg)</span></label>
-                  <input type="text" placeholder="e.g. Anti-TPO 120 IU/mL" value={formData.antibodies} onChange={(e) => set('antibodies', e.target.value)} />
+                  <><input type="text" placeholder="e.g. Anti-TPO 120 IU/mL" value={formData.antibodies} onChange={(e) => set('antibodies', e.target.value)} /><Prev k="antibodies" /></>
                 </div>
               </div>
 
               <div className="sheet-row">
                 <div className="form-group">
                   <label>Neck US Date</label>
-                  <input type="date" max={TODAY} value={formData.usDate} onChange={(e) => set('usDate', e.target.value)} />
+                  <><input type="date" max={TODAY} value={formData.usDate} onChange={(e) => set('usDate', e.target.value)} /><Prev k="usDate" /></>
                 </div>
                 <div className="form-group">
                   <label>RT Lobe <span className="unit">(US findings)</span></label>
-                  <input type="text" placeholder="e.g. 4.5 × 2.0 cm, heterogeneous" value={formData.rightLobeSize} onChange={(e) => set('rightLobeSize', e.target.value)} />
+                  <><input type="text" placeholder="e.g. 4.5 × 2.0 cm, heterogeneous" value={formData.rightLobeSize} onChange={(e) => set('rightLobeSize', e.target.value)} /><Prev k="rightLobeSize" /></>
                 </div>
                 <div className="form-group">
                   <label>LT Lobe <span className="unit">(US findings)</span></label>
-                  <input type="text" placeholder="e.g. 4.2 × 1.8 cm, nodule 1.1 cm" value={formData.leftLobeSize} onChange={(e) => set('leftLobeSize', e.target.value)} />
+                  <><input type="text" placeholder="e.g. 4.2 × 1.8 cm, nodule 1.1 cm" value={formData.leftLobeSize} onChange={(e) => set('leftLobeSize', e.target.value)} /><Prev k="leftLobeSize" /></>
                 </div>
               </div>
 
@@ -459,7 +462,7 @@ const ScanThyroid = () => {
               <div className="sheet-row">
                 <div className="form-group">
                   <label>CT Neck with Contrast — Date performed</label>
-                  <input type="date" max={TODAY} value={formData.contrastCTDate} onChange={(e) => set('contrastCTDate', e.target.value)} />
+                  <><input type="date" max={TODAY} value={formData.contrastCTDate} onChange={(e) => set('contrastCTDate', e.target.value)} /><Prev k="contrastCTDate" /></>
                 </div>
               </div>
               {contrastAlert && (
@@ -474,7 +477,7 @@ const ScanThyroid = () => {
             <div className="sheet-row">
               <div className="form-group full-width">
                 <label>Previous Neck Surgery / FNAC</label>
-                <input type="text" placeholder="e.g. Total thyroidectomy 2022, papillary carcinoma on pathology" value={formData.surgicalHistory} onChange={(e) => set('surgicalHistory', e.target.value)} />
+                <><input type="text" placeholder="e.g. Total thyroidectomy 2022, papillary carcinoma on pathology" value={formData.surgicalHistory} onChange={(e) => set('surgicalHistory', e.target.value)} /><Prev k="surgicalHistory" /></>
               </div>
             </div>
 
@@ -484,11 +487,11 @@ const ScanThyroid = () => {
               <div className="sheet-row medication-row">
                 <div className="form-group">
                   <label>Eltroxin (Levothyroxine) — Dose</label>
-                  <input type="text" placeholder="e.g. 100 mcg/day" value={formData.eltroxinDose} onChange={(e) => set('eltroxinDose', e.target.value)} />
+                  <><input type="text" placeholder="e.g. 100 mcg/day" value={formData.eltroxinDose} onChange={(e) => set('eltroxinDose', e.target.value)} /><Prev k="eltroxinDose" /></>
                 </div>
                 {formData.eltroxinDose && (
                   <label className="stopped-check">
-                    <input type="checkbox" checked={formData.eltroxinStopped} onChange={(e) => set('eltroxinStopped', e.target.checked)} />
+                    <><input type="checkbox" checked={formData.eltroxinStopped} onChange={(e) => set('eltroxinStopped', e.target.checked)} /><Prev k="eltroxinStopped" /></>
                     Stopped 5 days before scan ✓
                   </label>
                 )}
@@ -496,18 +499,18 @@ const ScanThyroid = () => {
               <div className="sheet-row medication-row">
                 <div className="form-group">
                   <label>Carbimazole — Dose</label>
-                  <input type="text" placeholder="e.g. 10 mg/day" value={formData.carbimazoleDose} onChange={(e) => set('carbimazoleDose', e.target.value)} />
+                  <><input type="text" placeholder="e.g. 10 mg/day" value={formData.carbimazoleDose} onChange={(e) => set('carbimazoleDose', e.target.value)} /><Prev k="carbimazoleDose" /></>
                 </div>
                 {formData.carbimazoleDose && (
                   <label className="stopped-check">
-                    <input type="checkbox" checked={formData.carbimazoleStopped} onChange={(e) => set('carbimazoleStopped', e.target.checked)} />
+                    <><input type="checkbox" checked={formData.carbimazoleStopped} onChange={(e) => set('carbimazoleStopped', e.target.checked)} /><Prev k="carbimazoleStopped" /></>
                     Stopped 5 days before scan ✓
                   </label>
                 )}
               </div>
               <div className="form-group">
                 <label>Other drugs interfering with iodine uptake <span className="hint">(Cordarone, cough meds, etc.)</span></label>
-                <input type="text" placeholder="e.g. Cordarone 200 mg" value={formData.otherDrugs} onChange={(e) => set('otherDrugs', e.target.value)} />
+                <><input type="text" placeholder="e.g. Cordarone 200 mg" value={formData.otherDrugs} onChange={(e) => set('otherDrugs', e.target.value)} /><Prev k="otherDrugs" /></>
               </div>
             </div>
 
@@ -527,7 +530,7 @@ const ScanThyroid = () => {
               {formData.familyHistory === 'yes' && (
                 <div className="form-group">
                   <label>Details</label>
-                  <input type="text" placeholder="Who, what condition..." value={formData.familyHistoryNotes} onChange={(e) => set('familyHistoryNotes', e.target.value)} />
+                  <><input type="text" placeholder="Who, what condition..." value={formData.familyHistoryNotes} onChange={(e) => set('familyHistoryNotes', e.target.value)} /><Prev k="familyHistoryNotes" /></>
                 </div>
               )}
               <div className="form-group">
@@ -566,16 +569,16 @@ const ScanThyroid = () => {
                   {formData.contraceptiveStatus === 'married' && (
                     <div className="form-group">
                       <label>Date of LMP</label>
-                      <input type="date" max={TODAY} value={formData.lmpDate} onChange={(e) => set('lmpDate', e.target.value)} />
+                      <><input type="date" max={TODAY} value={formData.lmpDate} onChange={(e) => set('lmpDate', e.target.value)} /><Prev k="lmpDate" /></>
                     </div>
                   )}
                   <div className="form-group">
                     <label>No. of Children</label>
-                    <input type="number" min="0" placeholder="0" value={formData.numChildren} onChange={(e) => set('numChildren', e.target.value)} />
+                    <><input type="number" min="0" placeholder="0" value={formData.numChildren} onChange={(e) => set('numChildren', e.target.value)} /><Prev k="numChildren" /></>
                   </div>
                   <div className="form-group">
                     <label>Age of Youngest Child</label>
-                    <input type="number" min="0" placeholder="months/years" value={formData.youngestChildAge} onChange={(e) => set('youngestChildAge', e.target.value)} />
+                    <><input type="number" min="0" placeholder="months/years" value={formData.youngestChildAge} onChange={(e) => set('youngestChildAge', e.target.value)} /><Prev k="youngestChildAge" /></>
                   </div>
                 </div>
               </div>
@@ -598,15 +601,15 @@ const ScanThyroid = () => {
                 </div>
                 <div className="form-group">
                   <label>Pulse <span className="unit">(bpm)</span></label>
-                  <input type="number" min="30" max="250" placeholder="e.g. 88" value={formData.pulseRate} onChange={(e) => set('pulseRate', e.target.value)} />
+                  <><input type="number" min="30" max="250" placeholder="e.g. 88" value={formData.pulseRate} onChange={(e) => set('pulseRate', e.target.value)} /><Prev k="pulseRate" /></>
                 </div>
                 <div className="form-group">
                   <label>Local — RT Lobe <span className="hint">(palpation)</span></label>
-                  <input type="text" placeholder="e.g. enlarged, firm, no nodule" value={formData.localRtLobe} onChange={(e) => set('localRtLobe', e.target.value)} />
+                  <><input type="text" placeholder="e.g. enlarged, firm, no nodule" value={formData.localRtLobe} onChange={(e) => set('localRtLobe', e.target.value)} /><Prev k="localRtLobe" /></>
                 </div>
                 <div className="form-group">
                   <label>Local — LT Lobe <span className="hint">(palpation)</span></label>
-                  <input type="text" placeholder="e.g. normal size, soft" value={formData.localLtLobe} onChange={(e) => set('localLtLobe', e.target.value)} />
+                  <><input type="text" placeholder="e.g. normal size, soft" value={formData.localLtLobe} onChange={(e) => set('localLtLobe', e.target.value)} /><Prev k="localLtLobe" /></>
                 </div>
               </div>
             </div>
@@ -621,15 +624,15 @@ const ScanThyroid = () => {
             <div className="sheet-row">
               <div className="form-group">
                 <label>Weight <span className="unit">(kg)</span></label>
-                <input type="number" step="0.1" placeholder="e.g. 70" value={formData.prepWeight} onChange={(e) => set('prepWeight', e.target.value)} />
+                <><input type="number" step="0.1" placeholder="e.g. 70" value={formData.prepWeight} onChange={(e) => set('prepWeight', e.target.value)} /><Prev k="prepWeight" /></>
               </div>
               <div className="form-group">
                 <label>Height <span className="unit">(cm)</span></label>
-                <input type="number" step="0.1" placeholder="e.g. 165" value={formData.prepHeight} onChange={(e) => set('prepHeight', e.target.value)} />
+                <><input type="number" step="0.1" placeholder="e.g. 165" value={formData.prepHeight} onChange={(e) => set('prepHeight', e.target.value)} /><Prev k="prepHeight" /></>
               </div>
               <div className="form-group">
                 <label>Blood Glucose <span className="unit">(mg/dL)</span></label>
-                <input type="number" step="any" placeholder="e.g. 110" value={formData.prepBloodGlucose} onChange={(e) => set('prepBloodGlucose', e.target.value)} />
+                <><input type="number" step="any" placeholder="e.g. 110" value={formData.prepBloodGlucose} onChange={(e) => set('prepBloodGlucose', e.target.value)} /><Prev k="prepBloodGlucose" /></>
               </div>
             </div>
             <div className="sheet-row">
@@ -656,7 +659,7 @@ const ScanThyroid = () => {
               </div>
               <div className="form-group">
                 <label>Nurse Notes <span className="hint">(difficult veins, etc.)</span></label>
-                <input type="text" placeholder="Optional notes..." value={formData.prepNurseNotes} onChange={(e) => set('prepNurseNotes', e.target.value)} />
+                <><input type="text" placeholder="Optional notes..." value={formData.prepNurseNotes} onChange={(e) => set('prepNurseNotes', e.target.value)} /><Prev k="prepNurseNotes" /></>
               </div>
             </div>
           </div>
@@ -686,11 +689,11 @@ const ScanThyroid = () => {
               </div>
               <div className="form-group">
                 <label>Time of Injection</label>
-                <input type="datetime-local" value={formData.injectionTime} onChange={(e) => set('injectionTime', e.target.value)} />
+                <><input type="datetime-local" value={formData.injectionTime} onChange={(e) => set('injectionTime', e.target.value)} /><Prev k="injectionTime" /></>
               </div>
               <div className="form-group">
                 <label>Time of Imaging</label>
-                <input type="datetime-local" value={formData.scanTime} onChange={(e) => set('scanTime', e.target.value)} />
+                <><input type="datetime-local" value={formData.scanTime} onChange={(e) => set('scanTime', e.target.value)} /><Prev k="scanTime" /></>
               </div>
             </div>
 
@@ -698,14 +701,14 @@ const ScanThyroid = () => {
             <div className="sheet-row">
               <div className="form-group">
                 <label className="checkbox-label">
-                  <input type="checkbox" checked={formData.delayedImages} onChange={(e) => set('delayedImages', e.target.checked)} />
+                  <><input type="checkbox" checked={formData.delayedImages} onChange={(e) => set('delayedImages', e.target.checked)} /><Prev k="delayedImages" /></>
                   <span>More Acquisition / Delayed Images</span>
                 </label>
               </div>
               {formData.delayedImages && (
                 <div className="form-group">
                   <label>Details</label>
-                  <input type="text" placeholder="e.g. Delayed images at 4h — poor visualization of RT lobe" value={formData.delayedImagesNotes} onChange={(e) => set('delayedImagesNotes', e.target.value)} />
+                  <><input type="text" placeholder="e.g. Delayed images at 4h — poor visualization of RT lobe" value={formData.delayedImagesNotes} onChange={(e) => set('delayedImagesNotes', e.target.value)} /><Prev k="delayedImagesNotes" /></>
                 </div>
               )}
             </div>
@@ -714,7 +717,7 @@ const ScanThyroid = () => {
               <div className="sheet-row">
                 <div className="form-group">
                   <label>Withdrawal Days <span className="hint">(days off Levothyroxine before dose)</span></label>
-                  <input type="number" placeholder="e.g. 14" value={formData.withdrawalDays} onChange={(e) => set('withdrawalDays', e.target.value)} />
+                  <><input type="number" placeholder="e.g. 14" value={formData.withdrawalDays} onChange={(e) => set('withdrawalDays', e.target.value)} /><Prev k="withdrawalDays" /></>
                 </div>
               </div>
             )}
@@ -729,15 +732,15 @@ const ScanThyroid = () => {
             <div className="sheet-row">
               <div className="form-group">
                 <label>Right Lobe Uptake <span className="unit">(%)</span></label>
-                <input type="number" step="any" min="0" max="100" value={formData.rightLobeUptake} onChange={(e) => set('rightLobeUptake', e.target.value)} />
+                <><input type="number" step="any" min="0" max="100" value={formData.rightLobeUptake} onChange={(e) => set('rightLobeUptake', e.target.value)} /><Prev k="rightLobeUptake" /></>
               </div>
               <div className="form-group">
                 <label>Left Lobe Uptake <span className="unit">(%)</span></label>
-                <input type="number" step="any" min="0" max="100" value={formData.leftLobeUptake} onChange={(e) => set('leftLobeUptake', e.target.value)} />
+                <><input type="number" step="any" min="0" max="100" value={formData.leftLobeUptake} onChange={(e) => set('leftLobeUptake', e.target.value)} /><Prev k="leftLobeUptake" /></>
               </div>
               <div className="form-group">
                 <label>Total Uptake <span className="unit">(%)</span></label>
-                <input type="number" step="any" min="0" max="100" value={formData.totalUptake} onChange={(e) => set('totalUptake', e.target.value)} />
+                <><input type="number" step="any" min="0" max="100" value={formData.totalUptake} onChange={(e) => set('totalUptake', e.target.value)} /><Prev k="totalUptake" /></>
               </div>
               <div className="form-group">
                 <label>Gland Position</label>
@@ -751,21 +754,21 @@ const ScanThyroid = () => {
             <div className="sheet-row">
               <div className="form-group">
                 <label>Hot Nodules</label>
-                <textarea rows={2} placeholder="Location, size..." value={formData.hotNodules} onChange={(e) => set('hotNodules', e.target.value)} />
+                <><textarea rows={2} placeholder="Location, size..." value={formData.hotNodules} onChange={(e) => set('hotNodules', e.target.value)} /><Prev k="hotNodules" /></>
               </div>
               <div className="form-group">
                 <label>Cold Nodules</label>
-                <textarea rows={2} placeholder="Location, size..." value={formData.coldNodules} onChange={(e) => set('coldNodules', e.target.value)} />
+                <><textarea rows={2} placeholder="Location, size..." value={formData.coldNodules} onChange={(e) => set('coldNodules', e.target.value)} /><Prev k="coldNodules" /></>
               </div>
             </div>
 
             <div className="checkbox-group">
               <label className="checkbox-label">
-                <input type="checkbox" checked={formData.diffuseUptake} onChange={(e) => set('diffuseUptake', e.target.checked)} />
+                <><input type="checkbox" checked={formData.diffuseUptake} onChange={(e) => set('diffuseUptake', e.target.checked)} /><Prev k="diffuseUptake" /></>
                 <span>Diffuse Uptake</span>
               </label>
               <label className="checkbox-label">
-                <input type="checkbox" checked={formData.heterogeneousUptake} onChange={(e) => set('heterogeneousUptake', e.target.checked)} />
+                <><input type="checkbox" checked={formData.heterogeneousUptake} onChange={(e) => set('heterogeneousUptake', e.target.checked)} /><Prev k="heterogeneousUptake" /></>
                 <span>Heterogeneous Uptake</span>
               </label>
             </div>
@@ -778,11 +781,11 @@ const ScanThyroid = () => {
 
             <div className="form-group">
               <label>Impression</label>
-              <textarea rows={4} placeholder="Overall impression and conclusion..." value={formData.impression} onChange={(e) => set('impression', e.target.value)} />
+              <><textarea rows={4} placeholder="Overall impression and conclusion..." value={formData.impression} onChange={(e) => set('impression', e.target.value)} /><Prev k="impression" /></>
             </div>
             <div className="form-group">
               <label>Physician Notes</label>
-              <textarea rows={2} placeholder="Additional notes..." value={formData.physicianNotes} onChange={(e) => set('physicianNotes', e.target.value)} />
+              <><textarea rows={2} placeholder="Additional notes..." value={formData.physicianNotes} onChange={(e) => set('physicianNotes', e.target.value)} /><Prev k="physicianNotes" /></>
             </div>
           </div>
 

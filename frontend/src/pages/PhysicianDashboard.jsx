@@ -5,6 +5,7 @@ import { apiFetch, getWorkflowAll, advanceWorkflow } from '../utils/api';
 import { useQueueSocket } from '../utils/socket';
 import WorkflowProgress from '../components/WorkflowProgress';
 import ScanReportView from '../components/ScanReportView';
+import ReturnAction from '../components/ReturnAction';
 import { FileText, FolderOpen, PenTool, ChevronDown, ChevronUp, CheckCircle, ClipboardList, Activity, Pill, Scan, Bone, Droplet, Search, Plus } from 'lucide-react';
 import { getFileInfo } from '../utils/fileColor';
 import { format } from 'date-fns';
@@ -43,7 +44,7 @@ const PhysicianDashboard = () => {
       setPendingVisits(pendingQ);
       setScannedRecords(scannedQ.map((r) => ({ ...r, _scanType: r.scanType })));
     } catch (err) {
-      setError(err.message || 'فشل في تحميل البيانات');
+      setError(err.message || t('physician.load_failed'));
     }
   }, []);
 
@@ -77,9 +78,9 @@ const PhysicianDashboard = () => {
       setCompletedToday(prev => [...prev, record]);
       setExpandedId(null);
       setReportForm({ physicianNotes: '', impression: '' });
-      setSuccessMsg('تم اعتماد التقرير بنجاح');
+      setSuccessMsg(t('physician.report_approved'));
     } catch (err) {
-      setError(err.message || 'فشل في اعتماد التقرير');
+      setError(err.message || t('physician.approve_failed'));
     } finally {
       setSubmittingId(null);
     }
@@ -154,7 +155,11 @@ const PhysicianDashboard = () => {
         </div>
         <div className="records-list">
           {scannedRecords.length === 0 ? (
-            <div className="empty-state"><FileText size={48} /><p>{t('physician.no_reports')}</p></div>
+            <div className="empty-state">
+              <FileText size={48} />
+              <p>{t('physician.no_reports')}</p>
+              <span className="empty-state-hint">{t('physician.empty_hint')}</span>
+            </div>
           ) : (
             scannedRecords.map(record => {
               const patient = record.patient || {};
@@ -192,17 +197,30 @@ const PhysicianDashboard = () => {
                       <ScanReportView record={record} />
                       <form onSubmit={(e) => { e.preventDefault(); handleComplete(record); }} className="report-form">
                         <div className="form-group">
-                          <label>{t('physician.physician_notes')}</label>
-                          <textarea name="physicianNotes" value={reportForm.physicianNotes} onChange={handleFormChange} rows="3" className="touch-input" />
+                          <label>{t('physician.impression')} <span className="required-mark">*</span></label>
+                          <span className="field-help">{t('physician.impression_help')}</span>
+                          <textarea name="impression" value={reportForm.impression} onChange={handleFormChange} rows="3" className="touch-input" required />
                         </div>
                         <div className="form-group">
-                          <label>{t('physician.impression')}</label>
-                          <textarea name="impression" value={reportForm.impression} onChange={handleFormChange} rows="3" className="touch-input" />
+                          <label>{t('physician.physician_notes')}</label>
+                          <span className="field-help">{t('physician.physician_notes_help')}</span>
+                          <textarea name="physicianNotes" value={reportForm.physicianNotes} onChange={handleFormChange} rows="3" className="touch-input" />
                         </div>
-                        <button type="submit" className="btn-complete" disabled={submittingId === record.id}>
-                          <CheckCircle size={18} />
-                          {submittingId === record.id ? t('physician.approving') : t('physician.approve_report')}
-                        </button>
+                        <div className="report-form-actions">
+                          <button type="submit" className="btn-complete" disabled={submittingId === record.id || !reportForm.impression.trim()}>
+                            <CheckCircle size={18} />
+                            {submittingId === record.id ? t('physician.approving') : t('physician.approve_report')}
+                          </button>
+                          <ReturnAction
+                            record={record}
+                            targetStatus="Pending_Technical"
+                            label={t('workflow.return_to_tech')}
+                            onReturned={(r) => {
+                              setScannedRecords(prev => prev.filter(p => p.id !== r.id));
+                              setExpandedId(null);
+                            }}
+                          />
+                        </div>
                       </form>
                     </div>
                   )}

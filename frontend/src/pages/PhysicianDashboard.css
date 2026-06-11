@@ -395,3 +395,21 @@
   color: #b91c1c;
   border: 1px solid #fecaca;
 }
+
+.report-form .field-help {
+  display: block;
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 2px 0 6px;
+}
+
+.report-form .required-mark {
+  color: #dc2626;
+}
+
+.report-form-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}

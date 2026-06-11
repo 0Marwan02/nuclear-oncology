@@ -1,0 +1,28 @@
+.prev-field-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.prev-field-hint svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.prev-field-value {
+  color: #64748b;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
+.prev-field-meta {
+  color: #b0bcc9;
+  white-space: nowrap;
+}
