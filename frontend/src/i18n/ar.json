@@ -1,7 +1,6 @@
 {
   "app.name": "مركز الإشعاع النووي",
   "app.subtitle": "جامعة أسيوط",
-
   "nav.dashboard": "لوحة التحكم",
   "nav.patients": "المرضى",
   "nav.clinics": "العيادات",
@@ -26,7 +25,6 @@
   "nav.logout": "تسجيل الخروج",
   "nav.language": "English",
   "nav.settings": "الإعدادات",
-
   "settings.title": "إعدادات الحساب",
   "settings.subtitle": "إدارة ملفك الشخصي وكلمة المرور",
   "settings.profile": "الملف الشخصي",
@@ -47,7 +45,6 @@
   "settings.pwd_mismatch": "كلمتا المرور غير متطابقتين",
   "settings.load_failed": "فشل تحميل الملف الشخصي",
   "common.saving": "جاري الحفظ...",
-
   "common.save": "حفظ",
   "common.cancel": "إلغاء",
   "common.edit": "تعديل",
@@ -95,7 +92,6 @@
   "common.female": "أنثى",
   "common.active": "نشط",
   "common.inactive": "غير نشط",
-
   "status.registered": "مسجّل",
   "status.prepared": "تم التحضير",
   "status.scanned": "تم الفحص",
@@ -105,7 +101,6 @@
   "status.finished": "منتهي",
   "status.overdue": "متأخر",
   "status.upcoming": "قادم",
-
   "auth.login": "تسجيل الدخول",
   "auth.hospital_id": "رقم المستشفى",
   "auth.password": "كلمة المرور",
@@ -113,7 +108,6 @@
   "auth.login_error": "بيانات الدخول غير صحيحة",
   "auth.welcome": "أهلاً بك",
   "auth.nuclear_center": "مركز الإشعاع النووي — جامعة أسيوط",
-
   "dashboard.title": "لوحة التحكم الرئيسية",
   "dashboard.total_patients": "إجمالي المرضى",
   "dashboard.today_visits": "زيارات اليوم",
@@ -122,7 +116,6 @@
   "dashboard.quick_stats": "إحصائيات سريعة",
   "dashboard.workflow_summary": "ملخص سير العمل",
   "dashboard.view_all_patients": "عرض كل المرضى",
-
   "patient.title": "المرضى",
   "patient.add_new": "إضافة مريض جديد",
   "patient.search_placeholder": "بحث باسم المريض أو رقم الهوية...",
@@ -153,7 +146,6 @@
   "patient.no_scan_history": "لا يوجد سجل فحوصات",
   "patient.no_thyroid_cancer_file": "لم يتم إنشاء ملف سرطان الغدة لهذا المريض بعد",
   "patient.no_thyroid_disease_file": "لم يتم إنشاء ملف أمراض الغدة لهذا المريض بعد",
-
   "case.diagnosis": "التشخيص",
   "case.cancer_type": "نوع السرطان",
   "case.cancer_stage": "مرحلة السرطان",
@@ -162,7 +154,6 @@
   "case.status": "الحالة",
   "case.edit_status": "تعديل الحالة",
   "case.new": "حالة جديدة",
-
   "visit.add": "إضافة زيارة",
   "visit.date": "تاريخ الزيارة",
   "visit.weight": "الوزن (كجم)",
@@ -175,7 +166,6 @@
   "visit.nurse_notes": "ملاحظات التمريض",
   "visit.injection_site": "مكان الحقن",
   "visit.pregnancy_status": "حالة الحمل / آخر دورة",
-
   "workflow.registered": "مسجّل",
   "workflow.prepared": "تم التحضير",
   "workflow.scanned": "تم الفحص",
@@ -209,7 +199,6 @@
   "ehist.current": "الحالي",
   "ehist.prev": "السابق",
   "ehist.done": "تم",
-
   "physician.title": "مساحة عمل الطبيب",
   "physician.subtitle": "تقييم المرضى الجدد ومراجعة واعتماد التقارير",
   "physician.assessment_queue": "في انتظار التقييم",
@@ -237,7 +226,6 @@
   "physician.thyroid_cancer": "سرطان الغدة الدرقية",
   "physician.thyroid_diseases": "أمراض الغدة الدرقية",
   "physician.files": "ملفات",
-
   "nurse.title": "محطة التمريض",
   "nurse.subtitle": "تحضير المرضى وتسجيل العلامات الحيوية",
   "nurse.waiting": "في الانتظار",
@@ -267,7 +255,6 @@
   "nurse.no_patients": "لا يوجد مرضى في انتظار التحضير",
   "nurse.thyroid_medication_warning": "الأدوية لم يتم إيقافها — يجب إيقاف إلتروكسين / كاربيمازول قبل 5 أيام",
   "nurse.choose": "اختر",
-
   "technician.title": "لوحة الفني",
   "technician.subtitle": "قائمة الفحوصات الجاهزة وتسجيل البيانات التقنية",
   "technician.ready_count": "جاهز للفحص",
@@ -299,7 +286,6 @@
   "technician.scan_mode_whole_body": "Whole Body",
   "technician.scan_mode_spect": "SPECT",
   "technician.scan_mode_spect_ct": "SPECT/CT",
-
   "reception.title": "محطة الاستقبال",
   "reception.subtitle": "تسجيل المرضى وفتح لقاءات الفحص",
   "reception.new_encounter": "فتح لقاء جديد",
@@ -310,7 +296,6 @@
   "reception.encounter_opened": "تم فتح اللقاء بنجاح",
   "reception.register_patient": "تسجيل مريض جديد",
   "reception.open_visit": "فتح زيارة",
-
   "admin.users.title": "إدارة المستخدمين",
   "admin.users.create": "إنشاء مستخدم",
   "admin.users.hospital_id": "رقم المستشفى",
@@ -326,7 +311,6 @@
   "admin.users.role_admin": "مدير",
   "admin.users.national_id": "رقم الهوية",
   "admin.users.phone": "الهاتف",
-
   "admin.logs.title": "سجل المراجعة",
   "admin.logs.user": "المستخدم",
   "admin.logs.action": "الإجراء",
@@ -336,7 +320,6 @@
   "admin.logs.old_values": "القيم القديمة",
   "admin.logs.new_values": "القيم الجديدة",
   "admin.logs.no_logs": "لا توجد سجلات",
-
   "admin.permissions.title": "إدارة الصلاحيات",
   "admin.permissions.subtitle": "التحكم في صلاحيات الأدوار والمستخدمين",
   "admin.permissions.role_matrix": "مصفوفة الأدوار",
@@ -370,7 +353,6 @@
   "admin.permissions.source_user_granted": "ممنوحة",
   "admin.permissions.source_user_revoked": "مسحوبة",
   "admin.permissions.reset_override": "حذف التجاوز (الرجوع للدور)",
-
   "clinic.follow_up_date": "تاريخ المتابعة",
   "clinic.physician_notes": "ملاحظات الطبيب",
   "clinic.save": "حفظ المتابعة",
@@ -378,7 +360,6 @@
   "clinic.no_history": "لا يوجد سجل متابعات",
   "clinic.search_patient": "بحث عن مريض",
   "clinic.select_patient": "اختر مريضاً لعرض ملفه",
-
   "clinic.cancer.title": "سرطان الغدة الدرقية — متابعة DTC",
   "clinic.cancer.subtitle": "سجلات متابعة سرطان الغدة الدرقية المتمايز",
   "clinic.cancer.new_record": "متابعة سرطان جديدة",
@@ -388,7 +369,6 @@
   "clinic.cancer.treatment_plan": "خطة العلاج",
   "clinic.cancer.response": "الاستجابة للعلاج",
   "clinic.cancer.recurrence": "علامات الانتكاسة",
-
   "clinic.disease.title": "أمراض الغدة الدرقية — متابعة حميدة",
   "clinic.disease.subtitle": "سجلات متابعة أمراض الغدة الدرقية الحميدة",
   "clinic.disease.new_record": "متابعة مرض جديدة",
@@ -401,7 +381,6 @@
   "clinic.disease.symptoms": "الأعراض",
   "clinic.disease.current_medication": "الدواء الحالي",
   "clinic.disease.dose_adjustment": "تعديل الجرعة",
-
   "scan.petct.title": "PET/CT فلوروديوكسيجلوكوز",
   "scan.psma.title": "PSMA PET/CT",
   "scan.thyroid.title": "فحص الغدة الدرقية",
@@ -427,29 +406,24 @@
   "scan.locked": "مؤمّن",
   "scan.type": "نوع الفحص",
   "scan.view_details": "عرض التفاصيل",
-
   "ehistory.panel_title": "السجل الإلكتروني (E-History)",
   "ehistory.latest": "الأحدث",
   "ehistory.previous": "السابق",
   "ehistory.compare": "مقارنة",
   "ehistory.loading": "جاري تحميل السجل السابق…",
   "ehistory.no_history": "لا يوجد سجل فحوصات سابق",
-
   "search.placeholder": "بحث عن مريض... (Ctrl+K)",
   "search.results": "نتائج البحث",
   "search.no_results": "لا توجد نتائج مطابقة",
   "search.recent": "عمليات البحث الأخيرة",
-
   "error.load_failed": "فشل في تحميل البيانات",
   "error.save_failed": "فشل في حفظ البيانات",
   "error.network": "خطأ في الشبكة",
   "error.unauthorized": "غير مصرح",
   "error.not_found": "غير موجود",
   "error.locked": "هذا السجل مؤمّن ولا يمكن تعديله",
-
   "global_search.title": "البحث العام",
   "global_search.hint": "اضغط Ctrl+K للبحث",
-
   "perm.patient:create": "إنشاء ملف مريض",
   "perm.patient:view": "عرض قائمة المرضى",
   "perm.patient:view_profile": "عرض ملف المريض",
@@ -470,12 +444,15 @@
   "perm.admin:users": "إدارة المستخدمين",
   "perm.admin:logs": "عرض سجل المراجعة",
   "perm.admin:permissions": "إدارة الصلاحيات",
-
   "cat.Patient Management": "إدارة المرضى",
   "cat.Clinical Data": "البيانات الإكلينيكية",
   "cat.Workflow Stages": "مراحل سير العمل",
   "cat.Clinic Files": "الملفات الإكلينيكية",
   "cat.Scans": "الفحوصات",
   "cat.Appointments": "المواعيد",
-  "cat.Administration": "الإدارة"
+  "cat.Administration": "الإدارة",
+  "nav.scans_cardiac": "فحص القلب (MPI)",
+  "cardiac.title": "فحص تروية عضلة القلب",
+  "cardiac.subtitle": "تصوير تروية عضلة القلب — Tc-99m / Tl-201",
+  "cardiac.history": "سجل فحوصات القلب"
 }

@@ -11,6 +11,7 @@ const MODEL_MAP = {
   renal: 'scanRenal',
   gastric: 'scanGastric',
   meckel: 'scanMeckel',
+  cardiac: 'scanCardiac',
 };
 
 const VALID_STATUSES = ['Pending_Doctor', 'Pending_Nurse', 'Pending_Technical', 'Pending_Report', 'Completed'];
@@ -59,6 +60,7 @@ const DOSE_FIELD = {
   renal: 'tc99mDoseMCi',
   gastric: 'tc99mDoseMCi',
   meckel: 'tc99mDoseMCi',
+  cardiac: 'tracerDoseMCi',
 };
 
 const scanInclude = {
@@ -339,7 +341,7 @@ const getPatientWorkflow = async (req, res) => {
       orderBy: { visitDate: 'desc' },
     });
 
-    const scanTypes = ['scanPETCT', 'scanPSMAPETCT', 'scanThyroid', 'scanBone', 'scanRenal', 'scanGastric', 'scanMeckel'];
+    const scanTypes = ['scanPETCT', 'scanPSMAPETCT', 'scanThyroid', 'scanBone', 'scanRenal', 'scanGastric', 'scanMeckel', 'scanCardiac'];
     const scanLabels = {
       scanPETCT: 'petct',
       scanPSMAPETCT: 'psma',
@@ -348,6 +350,7 @@ const getPatientWorkflow = async (req, res) => {
       scanRenal: 'renal',
       scanGastric: 'gastric',
       scanMeckel: 'meckel',
+      scanCardiac: 'cardiac',
     };
     const scans = {};
 

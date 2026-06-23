@@ -5,7 +5,7 @@ import { getScanHistory, apiFetch } from '../utils/api';
 import {
   Activity, Pill, Scan, Bone, Droplet, Search as SearchIcon, Microscope,
   Calendar, FileText, ChevronDown, ChevronUp, ArrowLeft, GitCompare, X,
-  ArrowUp, ArrowDown, Minus, Layers, Clock, Stethoscope, CheckCircle2,
+  ArrowUp, ArrowDown, Minus, Layers, Clock, Stethoscope, CheckCircle2, HeartPulse,
 } from 'lucide-react';
 import './PatientHistory.css';
 
@@ -17,6 +17,7 @@ const TYPE_META = {
   renal:   { label: 'Renal',     color: '#3b82f6', Icon: Droplet,    dose: 'tc99mDoseMCi' },
   gastric: { label: 'Gastric',   color: '#10b981', Icon: SearchIcon, dose: 'tc99mDoseMCi' },
   meckel:  { label: "Meckel's",  color: '#f97316', Icon: Microscope, dose: 'tc99mDoseMCi' },
+  cardiac: { label: 'Cardiac',   color: '#ef4444', Icon: HeartPulse, dose: 'tracerDoseMCi' },
 };
 
 const meta = (t) => TYPE_META[t] || { label: t || 'Scan', color: '#9ca3af', Icon: FileText, dose: null };

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
-import { Search, FileText, BarChart3, Plus, Loader2, AlertCircle, Calendar, Activity, Syringe, Pill, Bone, Droplets, UtensilsCrossed } from 'lucide-react';
+import { Search, FileText, BarChart3, Plus, Loader2, AlertCircle, Calendar, Activity, Syringe, Pill, Bone, Droplets, UtensilsCrossed, HeartPulse } from 'lucide-react';
 import { format } from 'date-fns';
 import { getScans, getScanStats } from '../utils/api';
 import './ScansList.css';
@@ -13,6 +13,7 @@ const SCAN_TYPES = [
   { key: 'bone', label: 'Bone Scan', labelAr: 'فحص العظام', icon: Bone, route: '/scans/bone', color: '#2563eb' },
   { key: 'renal', label: 'Renal Scan', labelAr: 'فحص الكلى', icon: Droplets, route: '/scans/renal', color: '#0d9488' },
   { key: 'gastric', label: 'Gastric Emptying', labelAr: 'فحص تفريغ المعدة', icon: UtensilsCrossed, route: '/scans/gastric', color: '#d97706' },
+  { key: 'cardiac', label: 'Cardiac (MPI)', labelAr: 'فحص القلب', icon: HeartPulse, route: '/scans/cardiac', color: '#ef4444' },
 ];
 
 const STATUS_MAP = {

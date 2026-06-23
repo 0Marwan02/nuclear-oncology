@@ -41,6 +41,8 @@ model User {
   scanGastricReports ScanGastric[]    @relation("ScanGastric_reporter")
   scanMeckels        ScanMeckel[]
   scanMeckelReports  ScanMeckel[]     @relation("ScanMeckel_reporter")
+  scanCardiacs       ScanCardiac[]
+  scanCardiacReports ScanCardiac[]    @relation("ScanCardiac_reporter")
   userPermissions    UserPermission[]
   fieldAudits        FieldAudit[]
 }
@@ -85,6 +87,7 @@ model Patient {
   scanRenals     ScanRenal[]
   scanGastrics   ScanGastric[]
   scanMeckels    ScanMeckel[]
+  scanCardiacs   ScanCardiac[]
 }
 
 model Visit {
@@ -120,6 +123,7 @@ model Visit {
   scanRenals     ScanRenal[]
   scanGastrics   ScanGastric[]
   scanMeckels    ScanMeckel[]
+  scanCardiacs   ScanCardiac[]
 
   returnReason String?
   @@index([patientId])
@@ -853,6 +857,126 @@ model ScanMeckel {
   performer       User     @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
   reportedBy      String?
   reporter        User?    @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanMeckel_reporter")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  returnReason String?
+  @@index([patientId])
+  @@index([workflowStatus])
+}
+
+model ScanCardiac {
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  visitId   String?
+  visit     Visit?  @relation(fields: [visitId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  // === DOCTOR SECTION — Indication / Complaint ===
+  diagnosis           String?
+  chestPain           Boolean?
+  chestPainCharacter  String? // burning | pricking | compressing
+  chestPainOnset      String? // sudden | acute | gradual
+  chestPainCourse     String?
+  chestPainDuration   String? // minutes | hours
+  precipitatedBy      String? // JSON array: rest | exercise | after_meals | others
+  relievedBy          String? // JSON array: rest | dinitra | antacids | others
+  radiation           Boolean?
+  radiationSite       String?
+  palpitation         Boolean?
+  sob                 Boolean?
+  nausea              Boolean?
+  vomiting            Boolean?
+  fever               Boolean?
+  cough               Boolean?
+  legPain             Boolean?
+  complaintOthers     String?
+
+  // === DOCTOR — Risk factors ===
+  smoking        Boolean?
+  htn            Boolean?
+  dm             Boolean?
+  hyperlipidemia Boolean?
+  renalDisease   Boolean?
+  familyHx       Boolean?
+  vasculitis     Boolean?
+
+  // === DOCTOR — Past history ===
+  angina                 Boolean?
+  stroke                 Boolean?
+  mi                     Boolean?
+  intermittentClaudication Boolean?
+
+  // === DOCTOR — Surgical history ===
+  cabg        Boolean?
+  ptca        Boolean?
+  angioplasty Boolean?
+  surgeryDate DateTime?
+
+  // === DOCTOR — Text ===
+  drugHistory         String?
+  ccuAdmissionHistory String?
+
+  // === DOCTOR — Contraceptive (female) ===
+  contraceptiveStatus String? // single | postmenopausal | married
+  lmpDate             DateTime?
+
+  // === DOCTOR — Previous investigations ===
+  ecgDate              DateTime?
+  ecgFindings          String?
+  echoDate             DateTime?
+  echoFindings         String?
+  labDate              DateTime?
+  cardiacEnzymes       String?
+  cardiacCtMriDate     DateTime?
+  cardiacCtMriFindings String?
+
+  // === NURSE SECTION (standard) ===
+  prepWeight       Float?
+  prepHeight       Float?
+  prepBloodGlucose Float?
+  injectionSite    String?
+  pregnancyStatus  String?
+  prepNurseNotes   String?
+
+  // === TECHNICIAN SECTION — Procedure ===
+  scanMode             String? // JSON array: rest | stress | delayed | redistribution | reinjection
+  treadmillExercise    Boolean?
+  thrBpm               Int?
+  mets                 Float?
+  exerciseDurationMin  Int?
+  exerciseDurationSec  Int?
+  reasonEndingExercise String?
+  vitalsTable          String? // JSON — 5 rows × {time,pulse,bp,ecg,notes}
+  pharmacological      Boolean?
+  pharmaDrug           String?
+  pharmaDose           String?
+  procedureSymptoms    String? // JSON array
+  nmPhysician          String?
+  cardiologist         String?
+
+  // === TECHNICIAN — Tracer box ===
+  tracer             String?
+  tracerDoseMCi      Float?
+  injectionSiteSide  String? // RT | LT
+  injectionSiteLimb  String? // hand | foot | forearm
+  injectionTime      DateTime?
+  acquisitionTime    DateTime?
+  technicianPhysicist String?
+  moreAcquisition    String?
+
+  // === RESULTS / REPORT ===
+  impression      String?
+  physicianNotes  String?
+  technicianNotes String?
+  doseUnit        String   @default("mCi")
+  fileUrl         String?
+  workflowStatus  String   @default("Pending_Doctor")
+  isLocked        Boolean  @default(false)
+  performedBy     String
+  performer       User     @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  reportedBy      String?
+  reporter        User?    @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "ScanCardiac_reporter")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

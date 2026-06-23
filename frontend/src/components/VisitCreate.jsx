@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Pill, Scan, Bone, Droplet, Search, X, Plus, ChevronRight, RefreshCw } from 'lucide-react';
+import { Activity, Pill, Scan, Bone, Droplet, Search, X, Plus, ChevronRight, RefreshCw, HeartPulse } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 import './VisitCreate.css';
 
@@ -12,6 +12,7 @@ const SCAN_TYPES = [
   { label: 'Renal',           path: '/scans/renal',   icon: Droplet,  color: '#3b82f6', category: 'GAMMA', sub: 'Renal' },
   { label: 'Gastric',         path: '/scans/gastric', icon: Search,   color: '#10b981', category: 'GAMMA', sub: 'Gastric' },
   { label: "Meckel's",        path: '/scans/meckel',  icon: Search,   color: '#f97316', category: 'GAMMA', sub: 'Meckel' },
+  { label: 'Cardiac (MPI)',   path: '/scans/cardiac', icon: HeartPulse, color: '#ef4444', category: 'GAMMA', sub: 'Cardiac' },
 ];
 
 const typeFromPatient = (patient) => {

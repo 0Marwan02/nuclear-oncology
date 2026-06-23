@@ -990,6 +990,140 @@ const getMeckelHistory = async (req, res) => {
   }
 };
 
+// ===== Cardiac (MPI) =====
+
+const CARDIAC_DATE_FIELDS = [
+  'surgeryDate', 'lmpDate', 'ecgDate', 'echoDate', 'labDate',
+  'cardiacCtMriDate', 'injectionTime', 'acquisitionTime',
+];
+
+const coerceCardiacDates = (body) => {
+  const out = {};
+  for (const f of CARDIAC_DATE_FIELDS) {
+    if (body[f]) {
+      const d = new Date(body[f]);
+      if (!isNaN(d.getTime())) out[f] = d;
+    }
+  }
+  return out;
+};
+
+const createCardiac = async (req, res) => {
+  const { patientId, visitId, reportedBy } = req.body;
+
+  if (!patientId) return res.status(400).json({ message: 'patientId is required' });
+
+  try {
+    const fileUrl = req.file ? `/uploads/scans/${req.file.filename}` : null;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const scan = await tx.scanCardiac.create({
+        data: {
+          ...pickClinicalFields(req.body, 'ScanCardiac'),
+          ...coerceCardiacDates(req.body),
+          patientId, visitId,
+          tracerDoseMCi: req.body.tracerDoseMCi != null ? parseFloat(req.body.tracerDoseMCi) || null : null,
+          fileUrl, performedBy: req.user.id, reportedBy,
+          workflowStatus: safeCreateStatus(req.body.workflowStatus),
+        },
+        include: scanInclude,
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: req.user.id, tableName: 'ScanCardiac', recordId: scan.id,
+          action: 'INSERT',
+          newValues: JSON.stringify({ patientId, diagnosis: req.body.diagnosis, impression: req.body.impression }),
+        },
+      });
+
+      return scan;
+    });
+
+    return res.status(201).json(result);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to create Cardiac scan', error: error.message });
+  }
+};
+
+const getCardiacs = async (req, res) => {
+  const { patientId } = req.query;
+  try {
+    const where = patientId ? { patientId } : {};
+    const scans = await prisma.scanCardiac.findMany({
+      where, orderBy: { createdAt: 'desc' }, include: scanInclude, take: 100,
+    });
+    return res.json(scans);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to list Cardiac scans', error: error.message });
+  }
+};
+
+const getCardiac = async (req, res) => {
+  try {
+    const scan = await prisma.scanCardiac.findUnique({
+      where: { id: req.params.id }, include: scanInclude,
+    });
+    if (!scan) return res.status(404).json({ message: 'Cardiac scan not found' });
+    return res.json(scan);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to get Cardiac scan', error: error.message });
+  }
+};
+
+const updateCardiac = async (req, res) => {
+  try {
+    const existing = await prisma.scanCardiac.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: 'Cardiac scan not found' });
+
+    const fileUrl = req.file ? `/uploads/scans/${req.file.filename}` : existing.fileUrl;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const scan = await tx.scanCardiac.update({
+        where: { id: req.params.id },
+        data: withRoleClinical(req, 'ScanCardiac', {
+          ...coerceCardiacDates(req.body),
+          visitId: req.body.visitId,
+          fileUrl, reportedBy: req.body.reportedBy,
+        }),
+        include: scanInclude,
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: req.user.id, tableName: 'ScanCardiac', recordId: scan.id,
+          action: 'UPDATE',
+          oldValues: JSON.stringify(existing),
+          newValues: JSON.stringify({
+            diagnosis: req.body.diagnosis, impression: req.body.impression,
+            physicianNotes: req.body.physicianNotes, fileUrl,
+          }),
+        },
+      });
+
+      return scan;
+    });
+
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to update Cardiac scan', error: error.message });
+  }
+};
+
+const getCardiacHistory = async (req, res) => {
+  try {
+    const scans = await prisma.scanCardiac.findMany({
+      where: { patientId: req.params.patientId },
+      orderBy: { createdAt: 'desc' },
+      include: scanInclude,
+      take: 100,
+    });
+    return res.json(scans);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to get Cardiac history', error: error.message });
+  }
+};
+
 // ===== Aggregate — all scan types for one patient =====
 
 const SCAN_MODELS = {
@@ -1000,6 +1134,7 @@ const SCAN_MODELS = {
   renal: 'scanRenal',
   gastric: 'scanGastric',
   meckel: 'scanMeckel',
+  cardiac: 'scanCardiac',
 };
 
 // GET /scans/all/patient/:patientId — every scan record for a patient, across
@@ -1029,7 +1164,7 @@ const getAllScansForPatient = async (req, res) => {
 
 const getScanStats = async (req, res) => {
   try {
-    const [petct, psma, thyroid, bone, renal, gastric, meckel] = await Promise.all([
+    const [petct, psma, thyroid, bone, renal, gastric, meckel, cardiac] = await Promise.all([
       prisma.scanPETCT.count(),
       prisma.scanPSMAPETCT.count(),
       prisma.scanThyroid.count(),
@@ -1037,9 +1172,10 @@ const getScanStats = async (req, res) => {
       prisma.scanRenal.count(),
       prisma.scanGastric.count(),
       prisma.scanMeckel.count(),
+      prisma.scanCardiac.count(),
     ]);
 
-    const total = petct + psma + thyroid + bone + renal + gastric + meckel;
+    const total = petct + psma + thyroid + bone + renal + gastric + meckel + cardiac;
 
     return res.json({
       total,
@@ -1050,6 +1186,7 @@ const getScanStats = async (req, res) => {
       renal,
       gastric,
       meckel,
+      cardiac,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to get scan stats', error: error.message });
@@ -1064,6 +1201,7 @@ module.exports = {
   createRenal, getRenals, getRenal, updateRenal, getRenalHistory,
   createGastric, getGastrics, getGastric, updateGastric, getGastricHistory,
   createMeckel, getMeckels, getMeckel, updateMeckel, getMeckelHistory,
+  createCardiac, getCardiacs, getCardiac, updateCardiac, getCardiacHistory,
   getAllScansForPatient,
   getScanStats,
 };

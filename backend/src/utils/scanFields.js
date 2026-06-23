@@ -24,6 +24,7 @@ const TYPE_TO_MODEL = {
   renal: 'ScanRenal',
   gastric: 'ScanGastric',
   meckel: 'ScanMeckel',
+  cardiac: 'ScanCardiac',
 };
 
 // Fields the server owns — never picked from the request body as clinical data.
@@ -87,6 +88,12 @@ const ROLE_WRITABLE = {
     'dmsaInjectionTime', 'dmsaScanTime', 'dtpaInjectionTime', 'dtpaScanTime',
     'uptakeTime', 'scanMode', 'delayedImages', 'delayedImagesNotes', 'technicianNotes',
     'furosemideGiven', 'furosemideTime', 'aceInhibitorGiven',
+    // Cardiac (MPI) tech procedure + tracer box
+    'tracerDoseMCi', 'nmPhysician', 'cardiologist', 'technicianPhysicist',
+    'vitalsTable', 'procedureSymptoms', 'acquisitionTime', 'moreAcquisition',
+    'treadmillExercise', 'thrBpm', 'mets', 'exerciseDurationMin', 'exerciseDurationSec',
+    'reasonEndingExercise', 'pharmacological', 'pharmaDrug', 'pharmaDose',
+    'injectionSiteSide', 'injectionSiteLimb', 'tracer',
   ],
 };
 

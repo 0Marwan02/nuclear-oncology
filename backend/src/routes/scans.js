@@ -10,6 +10,7 @@ const {
   createRenal, getRenals, getRenal, updateRenal, getRenalHistory,
   createGastric, getGastrics, getGastric, updateGastric, getGastricHistory,
   createMeckel, getMeckels, getMeckel, updateMeckel, getMeckelHistory,
+  createCardiac, getCardiacs, getCardiac, updateCardiac, getCardiacHistory,
   getAllScansForPatient,
   getScanStats
 } = require('../controllers/scanController');
@@ -74,5 +75,12 @@ router.get('/meckel', getMeckels);
 router.get('/meckel/patient/:patientId', getMeckelHistory);
 router.get('/meckel/:id', getMeckel);
 router.put('/meckel/:id', upload.single('scanFile'), roleFieldFilter, updateMeckel);
+
+// Cardiac (MPI)
+router.post('/cardiac', doctorOnly, upload.single('scanFile'), createCardiac);
+router.get('/cardiac', getCardiacs);
+router.get('/cardiac/patient/:patientId', getCardiacHistory);
+router.get('/cardiac/:id', getCardiac);
+router.put('/cardiac/:id', upload.single('scanFile'), roleFieldFilter, updateCardiac);
 
 module.exports = router;

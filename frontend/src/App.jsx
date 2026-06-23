@@ -25,6 +25,7 @@ import ScanBone from './pages/ScanBone';
 import ScanRenal from './pages/ScanRenal';
 import ScanGastric from './pages/ScanGastric';
 import ScanMeckel from './pages/ScanMeckel';
+import ScanCardiac from './pages/ScanCardiac';
 import './App.css';
 
 function App() {
@@ -55,6 +56,7 @@ function App() {
           <Route path="scans/renal" element={<ScanRenal />} />
           <Route path="scans/gastric" element={<ScanGastric />} />
           <Route path="scans/meckel" element={<ScanMeckel />} />
+          <Route path="scans/cardiac" element={<ScanCardiac />} />
           <Route path="settings" element={<Settings />} />
           <Route path="admin/users" element={<AdminUsers />} />
           <Route path="admin/logs" element={<AdminLogs />} />

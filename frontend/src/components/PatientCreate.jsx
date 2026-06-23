@@ -20,6 +20,7 @@ const GAMMA_SUB = [
   { key: 'Renal',    label: 'Renal',      path: '/scans/renal' },
   { key: 'Gastric',  label: 'Gastric',    path: '/scans/gastric' },
   { key: "Meckel",   label: "Meckel's",   path: '/scans/meckel' },
+  { key: 'Cardiac',  label: 'Cardiac',    path: '/scans/cardiac' },
   { key: 'Other',    label: 'Other',      path: '/scans/petct' },
 ];
 

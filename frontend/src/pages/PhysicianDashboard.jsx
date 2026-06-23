@@ -6,7 +6,7 @@ import { useQueueSocket } from '../utils/socket';
 import WorkflowProgress from '../components/WorkflowProgress';
 import ScanReportView from '../components/ScanReportView';
 import ReturnAction from '../components/ReturnAction';
-import { FileText, FolderOpen, PenTool, ChevronDown, ChevronUp, CheckCircle, ClipboardList, Activity, Pill, Scan, Bone, Droplet, Search, Plus } from 'lucide-react';
+import { FileText, FolderOpen, PenTool, ChevronDown, ChevronUp, CheckCircle, ClipboardList, Activity, Pill, Scan, Bone, Droplet, Search, Plus, HeartPulse } from 'lucide-react';
 import { getFileInfo } from '../utils/fileColor';
 import { format } from 'date-fns';
 import './PhysicianDashboard.css';
@@ -18,6 +18,7 @@ const SCAN_SHORTCUTS = [
   { label: 'Bone', icon: Bone, path: '/scans/bone', color: '#6b7280' },
   { label: 'Renal', icon: Droplet, path: '/scans/renal', color: '#3b82f6' },
   { label: 'Gastric', icon: Search, path: '/scans/gastric', color: '#10b981' },
+  { label: 'Cardiac', icon: HeartPulse, path: '/scans/cardiac', color: '#ef4444' },
 ];
 
 const PhysicianDashboard = () => {
@@ -163,7 +164,7 @@ const PhysicianDashboard = () => {
           ) : (
             scannedRecords.map(record => {
               const patient = record.patient || {};
-              const dose = record.fdgDoseMCi || record.ga68DoseMCi || record.isotopeDoseMCi || record.tc99mDoseMCi || '—';
+              const dose = record.fdgDoseMCi || record.ga68DoseMCi || record.isotopeDoseMCi || record.tc99mDoseMCi || record.tracerDoseMCi || '—';
               const impression = record.impression || '';
               const fileInfo = getFileInfo(record);
 

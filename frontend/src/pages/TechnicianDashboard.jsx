@@ -19,6 +19,7 @@ const SCAN_TYPES = [
   { value: 'renal', label: 'Renal' },
   { value: 'gastric', label: 'Gastric' },
   { value: 'meckel', label: "Meckel's" },
+  { value: 'cardiac', label: 'Cardiac' },
 ];
 
 const TechnicianDashboard = () => {

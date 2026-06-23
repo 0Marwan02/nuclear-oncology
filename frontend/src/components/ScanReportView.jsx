@@ -5,6 +5,34 @@ import './ScanReportView.css';
 const SCAN_LABEL = {
   petct: 'PET/CT (FDG)', psma: 'PSMA PET/CT', thyroid: 'Thyroid Scan',
   bone: 'Bone Scan', renal: 'Renal Scan', gastric: 'Gastric Emptying', meckel: "Meckel's Scan",
+  cardiac: 'Cardiac (MPI)',
+};
+
+// Fields whose value is a JSON array string (render as a comma-joined list).
+const JSON_ARRAY_FIELDS = new Set(['scanMode', 'procedureSymptoms', 'precipitatedBy', 'relievedBy']);
+
+// Parse a JSON-array string; fall back to [value] so legacy single-string
+// records (e.g. old scanMode) still render.
+const parseArr = (val) => {
+  if (Array.isArray(val)) return val;
+  if (typeof val !== 'string') return [val];
+  try {
+    const p = JSON.parse(val);
+    return Array.isArray(p) ? p : [val];
+  } catch {
+    return [val];
+  }
+};
+
+const parseVitals = (val) => {
+  if (Array.isArray(val)) return val;
+  if (typeof val !== 'string') return null;
+  try {
+    const p = JSON.parse(val);
+    return Array.isArray(p) ? p : null;
+  } catch {
+    return null;
+  }
 };
 
 // Internal / relational / noisy fields never shown on the report.
@@ -22,6 +50,12 @@ const TECH = new Set([
   'uptakeTime', 'scanMode', 'delayedImages', 'delayedImagesNotes', 'technicianNotes',
   'withdrawalDays', 'furosemideGiven', 'furosemideTime', 'aceInhibitorGiven',
   'scanDuration', 'imageInterval', 'isotopeType', 'scanSubType',
+  // Cardiac (MPI) tech procedure + tracer box
+  'tracerDoseMCi', 'tracer', 'injectionSiteSide', 'injectionSiteLimb', 'acquisitionTime',
+  'technicianPhysicist', 'moreAcquisition', 'nmPhysician', 'cardiologist',
+  'treadmillExercise', 'thrBpm', 'mets', 'exerciseDurationMin', 'exerciseDurationSec',
+  'reasonEndingExercise', 'pharmacological', 'pharmaDrug', 'pharmaDose',
+  'procedureSymptoms', 'vitalsTable',
 ]);
 const FINDINGS = new Set([
   'impression', 'physicianNotes', 'bodyRegion', 'suvMax', 'suvMean', 'lesionLocation', 'lesionSize',
@@ -34,6 +68,8 @@ const FINDINGS = new Set([
   'rightT1_2', 'leftT1_2', 'rightTmax', 'leftTmax', 'obstructionSign', 'refluxSign', 'corticalScarring',
   'halfEmptyingTime', 'retention1h', 'retention2h', 'retention4h', 'delayedEmptying', 'rapidEmptying',
   'aspirationSign', 'ectopicUptake', 'uptakeLocation',
+  // Cardiac (MPI) findings
+  'ecgFindings', 'echoFindings', 'cardiacEnzymes', 'cardiacCtMriFindings',
 ]);
 
 const humanize = (key) =>
@@ -51,6 +87,15 @@ const humanize = (key) =>
 
 const formatVal = (key, val) => {
   if (val === null || val === undefined || val === '') return null;
+  if (key === 'vitalsTable') {
+    // Rendered as a table elsewhere; only signal presence here.
+    const rows = parseVitals(val);
+    return rows && rows.length ? '__VITALS__' : null;
+  }
+  if (JSON_ARRAY_FIELDS.has(key)) {
+    const arr = parseArr(val).filter((x) => x != null && x !== '');
+    return arr.length ? arr.join(', ') : null;
+  }
   if (typeof val === 'boolean') return val ? 'Yes' : 'No';
   if (/time$/i.test(key)) {
     const d = new Date(val);
@@ -81,6 +126,40 @@ const SECTIONS = [
   { key: 'acq', title: 'Acquisition', Icon: Activity, test: (k) => TECH.has(k) },
   { key: 'findings', title: 'Findings', Icon: FlaskConical, test: (k) => FINDINGS.has(k) && k !== 'impression' && k !== 'physicianNotes' },
 ];
+
+const VITALS_LABELS = ['Before Rest', 'Before stress', 'During stress', 'After stress', 'Before Discharge'];
+
+const VitalsTable = ({ rows }) => {
+  if (!rows || !rows.length) return null;
+  return (
+    <div style={{ overflowX: 'auto', marginTop: 4 }}>
+      <table className="sr-vitals-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
+            <th style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid #e5e7eb' }}>Time</th>
+            <th style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid #e5e7eb' }}>Pulse</th>
+            <th style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid #e5e7eb' }}>BP</th>
+            <th style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid #e5e7eb' }}>ECG</th>
+            <th style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              <td style={{ padding: '4px 6px', borderBottom: '1px solid #f3f4f6' }}>{r.label || VITALS_LABELS[i] || `Row ${i + 1}`}</td>
+              <td style={{ padding: '4px 6px', borderBottom: '1px solid #f3f4f6' }}>{r.time || '—'}</td>
+              <td style={{ padding: '4px 6px', borderBottom: '1px solid #f3f4f6' }}>{r.pulse || '—'}</td>
+              <td style={{ padding: '4px 6px', borderBottom: '1px solid #f3f4f6' }}>{r.bp || '—'}</td>
+              <td style={{ padding: '4px 6px', borderBottom: '1px solid #f3f4f6' }}>{r.ecg || '—'}</td>
+              <td style={{ padding: '4px 6px', borderBottom: '1px solid #f3f4f6' }}>{r.notes || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 const ScanReportView = ({ record }) => {
   const type = record.scanType || record._scanType || record.type;
@@ -123,10 +202,17 @@ const ScanReportView = ({ record }) => {
           <div className="sr-section-title"><Icon size={14} /> {title}</div>
           <div className="sr-grid">
             {items.map((it) => (
-              <div className={`sr-item ${it.wide ? 'wide' : ''}`} key={it.key}>
-                <span className="sr-label">{it.label}</span>
-                <span className="sr-value">{it.value}</span>
-              </div>
+              it.key === 'vitalsTable' ? (
+                <div className="sr-item wide" key={it.key}>
+                  <span className="sr-label">{it.label}</span>
+                  <VitalsTable rows={parseVitals(record[it.key])} />
+                </div>
+              ) : (
+                <div className={`sr-item ${it.wide ? 'wide' : ''}`} key={it.key}>
+                  <span className="sr-label">{it.label}</span>
+                  <span className="sr-value">{it.value}</span>
+                </div>
+              )
             ))}
           </div>
         </div>
