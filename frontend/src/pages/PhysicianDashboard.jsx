@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../i18n/index';
-import { apiFetch, getWorkflowAll, advanceWorkflow, exportReport, getReportVersions, API_ORIGIN } from '../utils/api';
+import { apiFetch, getWorkflowAll, advanceWorkflow, exportReport, getReportVersions, listScanTemplates, API_ORIGIN } from '../utils/api';
 import { useQueueSocket } from '../utils/socket';
 import WorkflowProgress from '../components/WorkflowProgress';
 import ScanReportView from '../components/ScanReportView';
@@ -89,6 +89,11 @@ const PhysicianDashboard = () => {
   const [submittingId, setSubmittingId] = useState(null);
   const [reportForm, setReportForm] = useState({ physicianNotes: '', impression: '' });
   const [successMsg, setSuccessMsg] = useState('');
+  const [dynamicTemplates, setDynamicTemplates] = useState([]);
+
+  useEffect(() => {
+    listScanTemplates(true).then((rows) => setDynamicTemplates(rows || [])).catch(() => {});
+  }, []);
 
   const fetchQueues = useCallback(async () => {
     try {
@@ -173,6 +178,15 @@ const PhysicianDashboard = () => {
               <Icon size={16} /> {label}
             </button>
           ))}
+          {dynamicTemplates.map((tpl) => {
+            const color = tpl.color || '#0ea5e9';
+            return (
+              <button key={tpl.id} onClick={() => navigate(`/scans/t/${tpl.key}`)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 10, border: `1px solid ${color}30`, background: `${color}10`, color, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                <FileText size={16} /> {tpl.name}
+              </button>
+            );
+          })}
         </div>
       </div>
 

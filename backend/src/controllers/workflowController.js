@@ -1,6 +1,7 @@
 const prisma = require('../prisma');
 const { emitQueue } = require('../realtime');
 const { MODEL_FIELD_TYPES, TYPE_TO_MODEL } = require('../utils/scanFields');
+const { validateData } = require('./dynamicScanController');
 
 const MODEL_MAP = {
   visit: 'visit',
@@ -12,6 +13,7 @@ const MODEL_MAP = {
   gastric: 'scanGastric',
   meckel: 'scanMeckel',
   cardiac: 'scanCardiac',
+  dynamic: 'dynamicScan',
 };
 
 const VALID_STATUSES = ['Pending_Doctor', 'Pending_Nurse', 'Pending_Technical', 'Pending_Report', 'Completed'];
@@ -136,6 +138,54 @@ const buildReportData = (report = {}, userId) => {
   return data;
 };
 
+// Map a forward workflow step → which template section's fields are being
+// written, and the matching incoming payload object.
+const DYNAMIC_STEP = {
+  Pending_Technical: { section: 'nurse', key: 'prep' },
+  Pending_Report:    { section: 'tech',  key: 'technical' },
+  Completed:         { section: 'results', key: 'report' },
+};
+
+// Build the DynamicScan update for a forward workflow step: merge the relevant
+// section's template fields into the JSON `data` blob (validated/coerced) while
+// writing the scaffold columns (impression / notes / scanMode / reportedBy).
+const buildDynamicUpdate = async (record, nextStatus, payloads, userId) => {
+  const out = {};
+  const step = DYNAMIC_STEP[nextStatus];
+  if (!step) return out;
+
+  const incoming = payloads[step.key] || {};
+
+  const template = await prisma.scanTemplate.findUnique({
+    where: { id: record.templateId },
+    include: { fields: true },
+  });
+
+  if (template) {
+    // Only merge keys belonging to this step's section into the blob.
+    const validated = validateData(template.fields, incoming, { sections: [step.section] });
+    if (Object.keys(validated).length) {
+      const current = (() => { try { return JSON.parse(record.data || '{}'); } catch { return {}; } })();
+      out.data = JSON.stringify({ ...current, ...validated });
+    }
+  }
+
+  // Scaffold columns carried at the top level of the record.
+  if (nextStatus === 'Pending_Report') {
+    if (incoming.scanMode != null) {
+      out.scanMode = typeof incoming.scanMode === 'string' ? incoming.scanMode : JSON.stringify(incoming.scanMode);
+    }
+    if (incoming.notes != null) out.technicianNotes = incoming.notes;
+    if (incoming.technicianNotes != null) out.technicianNotes = incoming.technicianNotes;
+  }
+  if (nextStatus === 'Completed') {
+    out.reportedBy = userId;
+    if (incoming.impression != null) out.impression = incoming.impression;
+    if (incoming.physicianNotes != null) out.physicianNotes = incoming.physicianNotes;
+  }
+  return out;
+};
+
 const logWorkflowAudit = async (tx, userId, tableName, recordId, action, oldValues, newValues) => {
   await tx.auditLog.create({
     data: {
@@ -210,26 +260,37 @@ const advanceWorkflow = async (req, res) => {
       updateData.returnReason = null;
     }
 
-    if (workflowStatus === 'Pending_Technical' && prep) {
-      updateData = type === 'visit'
-        ? { ...updateData, ...buildVisitPrepData(prep) }
-        : { ...updateData, ...buildPrepData(prep) };
-    }
-    if (workflowStatus === 'Pending_Report' && technical && type !== 'visit') {
-      updateData = { ...updateData, ...buildTechnicalData(type, technical) };
-      updateData.isLocked = true;
-    }
-    if (workflowStatus === 'Completed' && report && type !== 'visit') {
-      updateData = { ...updateData, ...buildReportData(report, req.user.id) };
-    }
+    // --- Dynamic (admin-defined) records: merge section field keys into the
+    // JSON `data` blob, validated/coerced against the template, while still
+    // writing the standard scaffold columns. ---
+    if (type === 'dynamic') {
+      const dyn = await buildDynamicUpdate(record, workflowStatus, { prep, technical, report }, req.user.id);
+      updateData = { ...updateData, ...dyn };
+    } else {
+      if (workflowStatus === 'Pending_Technical' && prep) {
+        updateData = type === 'visit'
+          ? { ...updateData, ...buildVisitPrepData(prep) }
+          : { ...updateData, ...buildPrepData(prep) };
+      }
+      if (workflowStatus === 'Pending_Report' && technical && type !== 'visit') {
+        updateData = { ...updateData, ...buildTechnicalData(type, technical) };
+        updateData.isLocked = true;
+      }
+      if (workflowStatus === 'Completed' && report && type !== 'visit') {
+        updateData = { ...updateData, ...buildReportData(report, req.user.id) };
+      }
 
-    // Drop any key that isn't a real column on the target model (e.g. some scan
-    // types have no `scanMode`) so a stray field can never 500 the update.
-    const modelCols = MODEL_FIELD_TYPES[TYPE_TO_MODEL[type]];
-    if (modelCols) {
-      updateData = Object.fromEntries(
-        Object.entries(updateData).filter(([key]) => modelCols.has(key))
-      );
+      // Drop any key that isn't a real column on the target model (e.g. some scan
+      // types have no `scanMode`) so a stray field can never 500 the update.
+      const modelCols = MODEL_FIELD_TYPES[TYPE_TO_MODEL[type]];
+      if (modelCols) {
+        updateData = Object.fromEntries(
+          Object.entries(updateData).filter(([key]) => modelCols.has(key))
+        );
+      }
+    }
+    if (type === 'dynamic' && workflowStatus === 'Pending_Report') {
+      updateData.isLocked = true;
     }
 
     const include = type === 'visit'
@@ -307,6 +368,13 @@ const getAllByStatus = async (req, res) => {
   try {
     const { status } = req.query;
     const types = Object.keys(MODEL_MAP).filter((t) => t !== 'visit');
+
+    // Preload templates so dynamic records can carry a display label + fields.
+    const templates = await prisma.scanTemplate.findMany({
+      include: { fields: { orderBy: { order: 'asc' } } },
+    });
+    const tplMap = new Map(templates.map((t) => [t.id, t]));
+
     const results = await Promise.all(
       types.map(async (type) => {
         const modelName = MODEL_MAP[type];
@@ -316,12 +384,24 @@ const getAllByStatus = async (req, res) => {
           include: scanInclude,
           orderBy: { createdAt: 'desc' },
         });
-        return records.map((r) => ({
-          ...r,
-          scanType: type,
-          prepWeight: r.prepWeight,
-          prepBloodGlucose: r.prepBloodGlucose ?? r.bloodSugar,
-        }));
+        return records.map((r) => {
+          const base = {
+            ...r,
+            scanType: type,
+            prepWeight: r.prepWeight,
+            prepBloodGlucose: r.prepBloodGlucose ?? r.bloodSugar,
+          };
+          if (type === 'dynamic') {
+            const tpl = tplMap.get(r.templateId);
+            base.templateKey = tpl?.key;
+            base.templateName = tpl?.name;
+            base.templateNameAr = tpl?.nameAr;
+            base.templateFields = tpl?.fields || [];
+            base.scanLabel = tpl?.name || 'Dynamic Scan';
+            try { base._data = JSON.parse(r.data || '{}'); } catch { base._data = {}; }
+          }
+          return base;
+        });
       })
     );
     const combined = results.flat().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -361,6 +441,37 @@ const getPatientWorkflow = async (req, res) => {
         orderBy: { createdAt: 'desc' },
       });
       scans[scanLabels[model]] = items;
+    }
+
+    // Dynamic (admin-defined) scans — grouped under their template key so the
+    // sheet's admin-workflow restore (keyed by templateKey) can find in-flight rows.
+    const dynamicRows = await prisma.dynamicScan.findMany({
+      where: { patientId },
+      select: { id: true, createdAt: true, workflowStatus: true, impression: true, templateId: true, data: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (dynamicRows.length) {
+      const tplIds = [...new Set(dynamicRows.map((r) => r.templateId))];
+      const tpls = await prisma.scanTemplate.findMany({
+        where: { id: { in: tplIds } },
+        select: { id: true, key: true, name: true },
+      });
+      const tplMap = new Map(tpls.map((t) => [t.id, t]));
+      // A flat list for generic consumers...
+      scans.dynamic = dynamicRows.map((r) => ({
+        ...r,
+        templateKey: tplMap.get(r.templateId)?.key,
+        templateName: tplMap.get(r.templateId)?.name,
+      }));
+      // ...plus one bucket per template key so useAdminWorkflow(`t:<key>`) restores.
+      for (const r of dynamicRows) {
+        const key = tplMap.get(r.templateId)?.key;
+        if (!key) continue;
+        const bucket = `t:${key}`;
+        (scans[bucket] = scans[bucket] || []).push({
+          ...r, templateKey: key, templateName: tplMap.get(r.templateId)?.name,
+        });
+      }
     }
 
     res.json({ visits, scans });

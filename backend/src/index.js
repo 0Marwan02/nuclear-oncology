@@ -15,6 +15,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const adminRoutes = require('./routes/admin');
 
 const scansRoutes = require('./routes/scans');
+const dynamicScansRoutes = require('./routes/dynamicScans');
 const workflowRoutes = require('./routes/workflow');
 const reportsRoutes = require('./routes/reports');
 const { ensureReportsDir } = require('./controllers/reportController');
@@ -42,6 +43,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.use('/api/scans', scansRoutes);
+app.use('/api/dynamic-scans', dynamicScansRoutes);
 app.use('/api/workflow', workflowRoutes);
 app.use('/api/reports', reportsRoutes);
 

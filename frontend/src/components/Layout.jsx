@@ -1,5 +1,5 @@
 import { Outlet, Navigate, NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, User, LogOut, ShieldCheck, Activity, Building, Stethoscope, Syringe, UserCheck, FileText, ChevronDown, ChevronRight, Scan, Search, KeyRound, Languages, Settings as SettingsIcon } from 'lucide-react';
+import { Home, Users, User, LogOut, ShieldCheck, Activity, Building, Stethoscope, Syringe, UserCheck, FileText, ChevronDown, ChevronRight, Scan, Search, KeyRound, Languages, Settings as SettingsIcon, LayoutTemplate } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from '../i18n/index';
 import './Layout.css';
@@ -99,6 +99,10 @@ const Layout = () => {
               <NavLink to="/admin/permissions" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                 <KeyRound size={20} />
                 <span>{t('nav.permissions')}</span>
+              </NavLink>
+              <NavLink to="/admin/scan-templates" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <LayoutTemplate size={20} />
+                <span>{t('nav.scan_templates')}</span>
               </NavLink>
               <NavLink to="/admin/logs" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                 <Activity size={20} />

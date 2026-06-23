@@ -11,6 +11,8 @@ import Dashboard from './pages/Dashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminLogs from './pages/AdminLogs';
 import AdminPermissions from './pages/AdminPermissions';
+import AdminScanTemplates from './pages/AdminScanTemplates';
+import DynamicScanSheet from './pages/DynamicScanSheet';
 import Settings from './pages/Settings';
 
 import NurseDashboard from './pages/NurseDashboard';
@@ -57,10 +59,12 @@ function App() {
           <Route path="scans/gastric" element={<ScanGastric />} />
           <Route path="scans/meckel" element={<ScanMeckel />} />
           <Route path="scans/cardiac" element={<ScanCardiac />} />
+          <Route path="scans/t/:templateKey" element={<DynamicScanSheet />} />
           <Route path="settings" element={<Settings />} />
           <Route path="admin/users" element={<AdminUsers />} />
           <Route path="admin/logs" element={<AdminLogs />} />
           <Route path="admin/permissions" element={<AdminPermissions />} />
+          <Route path="admin/scan-templates" element={<AdminScanTemplates />} />
           </Route>
         </Route>
 

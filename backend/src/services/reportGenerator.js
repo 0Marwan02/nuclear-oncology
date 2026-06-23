@@ -133,10 +133,89 @@ const SECTION_DEFS = [
   { key: 'findings', title: 'Findings', test: (k) => FINDINGS.has(k) && k !== 'impression' && k !== 'physicianNotes' },
 ];
 
+// Map a template field section → the report section it belongs in.
+const DYNAMIC_SECTION_TITLES = {
+  doctor: 'Clinical / Referral',
+  nurse: 'Preparation',
+  tech: 'Acquisition',
+  results: 'Findings',
+};
+
+const formatDynamicVal = (field, val) => {
+  if (val === null || val === undefined || val === '') return null;
+  if (field.type === 'vitalsTable') return null; // handled separately
+  if (field.type === 'multiselect') {
+    const arr = parseArr(val).filter((x) => x != null && x !== '');
+    return arr.length ? arr.join(', ') : null;
+  }
+  if (field.type === 'checkbox') return (val === true || val === 'true') ? 'Yes' : 'No';
+  if (field.type === 'datetime') return fmtDateTime(val) || String(val);
+  if (field.type === 'date') return fmtDate(val) || String(val);
+  let s = String(val);
+  if (field.unit) s += ` ${field.unit}`;
+  return s;
+};
+
+// Build the report model for an admin-defined (dynamic) scan: sections come from
+// the template field definitions + the record's JSON `data` blob.
+const buildDynamicReportModel = async (scanId, meta) => {
+  const record = await prisma.dynamicScan.findUnique({
+    where: { id: scanId },
+    include: { patient: true, reporter: { select: { name: true } } },
+  });
+  if (!record) throw new Error('Scan record not found');
+  const template = await prisma.scanTemplate.findUnique({
+    where: { id: record.templateId },
+    include: { fields: { orderBy: { order: 'asc' } } },
+  });
+  if (!template) throw new Error('Template not found');
+
+  let data = {};
+  try { data = JSON.parse(record.data || '{}'); } catch { data = {}; }
+
+  const patient = record.patient || {};
+  const order = ['doctor', 'nurse', 'tech', 'results'];
+  const sections = order.map((sec) => {
+    const secFields = template.fields.filter((f) => f.section === sec);
+    const vitalsField = secFields.find((f) => f.type === 'vitalsTable');
+    const items = secFields
+      .map((f) => ({ field: f, value: formatDynamicVal(f, data[f.key]) }))
+      .filter((x) => x.value !== null)
+      .map((x) => ({ label: x.field.label, value: x.value }));
+    return {
+      title: DYNAMIC_SECTION_TITLES[sec] || sec,
+      items,
+      vitals: vitalsField ? parseVitals(data[vitalsField.key]) : null,
+    };
+  }).filter((s) => s.items.length > 0 || (s.vitals && s.vitals.length));
+
+  return {
+    letterhead: LETTERHEAD,
+    title: 'Nuclear Medicine Report',
+    scanLabel: template.name || 'Dynamic Scan',
+    reportNumber: meta.reportNumber || null,
+    version: meta.version || null,
+    generatedAt: fmtDate(new Date()),
+    patient: {
+      name: patient.name || '—',
+      nationalId: patient.nationalId || null,
+      gender: patient.gender || null,
+      age: ageFrom(patient.birthDate),
+    },
+    sections,
+    impression: record.impression || null,
+    physicianNotes: record.physicianNotes || null,
+    technicianNotes: record.technicianNotes || null,
+    physicianName: record.reporter?.name || meta.generatedByName || null,
+  };
+};
+
 /**
  * Load the scan record and return a normalized report model.
  */
 const buildReportModel = async (scanType, scanId, meta = {}) => {
+  if (scanType === 'dynamic') return buildDynamicReportModel(scanId, meta);
+
   const modelName = TYPE_TO_MODEL[scanType];
   if (!modelName) throw new Error(`Unknown scan type: ${scanType}`);
   // modelName is PascalCase (e.g. ScanCardiac); prisma client uses camelCase.

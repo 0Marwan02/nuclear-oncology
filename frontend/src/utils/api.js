@@ -106,6 +106,54 @@ export const getReportVersions = (scanType, scanId) => {
   return apiFetch(`/reports/${scanType}/${scanId}`);
 };
 
+// === Dynamic Sheet Engine (WS5) ===
+export const listScanTemplates = (activeOnly = false) => {
+  return apiFetch(`/dynamic-scans/templates${activeOnly ? '?active=1' : ''}`);
+};
+
+export const getScanTemplate = (keyOrId) => {
+  return apiFetch(`/dynamic-scans/templates/${encodeURIComponent(keyOrId)}`);
+};
+
+export const createScanTemplate = (data) => {
+  return apiFetch('/dynamic-scans/templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateScanTemplate = (id, data) => {
+  return apiFetch(`/dynamic-scans/templates/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const setScanTemplateActive = (id, isActive) => {
+  return apiFetch(`/dynamic-scans/templates/${id}/active`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isActive }),
+  });
+};
+
+export const createDynamicScan = (data) => {
+  return apiFetch('/dynamic-scans', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateDynamicScan = (id, data) => {
+  return apiFetch(`/dynamic-scans/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const getDynamicScanHistory = (patientId) => {
+  return apiFetch(`/dynamic-scans/patient/${patientId}`);
+};
+
 export const getMe = () => apiFetch('/auth/me');
 
 export const updateMe = (data) => {

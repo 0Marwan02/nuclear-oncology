@@ -43,6 +43,8 @@ model User {
   scanMeckelReports  ScanMeckel[]     @relation("ScanMeckel_reporter")
   scanCardiacs       ScanCardiac[]
   scanCardiacReports ScanCardiac[]    @relation("ScanCardiac_reporter")
+  dynamicScans       DynamicScan[]
+  dynamicScanReports DynamicScan[]    @relation("DynamicScan_reporter")
   userPermissions    UserPermission[]
   fieldAudits        FieldAudit[]
 }
@@ -88,6 +90,7 @@ model Patient {
   scanGastrics   ScanGastric[]
   scanMeckels    ScanMeckel[]
   scanCardiacs   ScanCardiac[]
+  dynamicScans   DynamicScan[]
 }
 
 model Visit {
@@ -1015,4 +1018,70 @@ model GeneratedReport {
 model Counter {
   key   String @id
   value Int    @default(0)
+}
+
+// ===== WS5 — Admin-defined scan sheets (Dynamic Sheet Engine) =====
+
+model ScanTemplate {
+  id        String   @id @default(uuid())
+  key       String   @unique // slug, e.g. "lung_perfusion"
+  name      String // display name (English / fallback)
+  nameAr    String? // Arabic display name
+  category  String? // grouping / badge
+  icon      String? // lucide icon name
+  color     String?
+  isActive  Boolean  @default(true)
+  version   Int      @default(1)
+  createdBy String
+  createdAt DateTime @default(now())
+
+  fields ScanTemplateField[]
+}
+
+model ScanTemplateField {
+  id          String       @id @default(uuid())
+  templateId  String
+  template    ScanTemplate @relation(fields: [templateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  section     String // "doctor" | "nurse" | "tech" | "results"
+  key         String // data key within the JSON blob
+  label       String
+  labelAr     String?
+  type        String // text|textarea|number|date|datetime|checkbox|radio|select|multiselect|group|vitalsTable
+  options     String? // JSON array for radio/select/multiselect
+  unit        String?
+  required    Boolean      @default(false)
+  order       Int          @default(0)
+  conditional String? // optional JSON: { field, equals } to show/hide
+
+  @@index([templateId])
+}
+
+model DynamicScan {
+  id         String  @id @default(uuid())
+  templateId String
+  patientId  String
+  patient    Patient @relation(fields: [patientId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  visitId    String?
+  data       String  @default("{}") // JSON: { fieldKey: value } for all sections
+
+  // standard workflow scaffold (same as scan models)
+  workflowStatus  String   @default("Pending_Doctor")
+  isLocked        Boolean  @default(false)
+  returnReason    String?
+  doseUnit        String   @default("mCi")
+  scanMode        String? // JSON array (WS2)
+  impression      String?
+  physicianNotes  String?
+  technicianNotes String?
+  fileUrl         String?
+  performedBy     String
+  performer       User     @relation(fields: [performedBy], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  reportedBy      String?
+  reporter        User?    @relation(fields: [reportedBy], references: [id], onUpdate: NoAction, onDelete: NoAction, name: "DynamicScan_reporter")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([workflowStatus])
+  @@index([templateId])
 }

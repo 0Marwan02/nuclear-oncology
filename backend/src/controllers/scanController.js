@@ -1153,7 +1153,38 @@ const getAllScansForPatient = async (req, res) => {
         return rows.map((r) => ({ ...r, scanType: type, type, date: r.createdAt }));
       })
     );
-    const flat = grouped.flat().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Dynamic (admin-defined) scans — tagged with their template key/name so the
+    // history UI can group and label them like any other modality.
+    const dynamicRows = await prisma.dynamicScan.findMany({
+      where: { patientId },
+      orderBy: { createdAt: 'desc' },
+      include: scanInclude,
+      take: 100,
+    });
+    let dynamicFlat = [];
+    if (dynamicRows.length) {
+      const tplIds = [...new Set(dynamicRows.map((r) => r.templateId))];
+      const tpls = await prisma.scanTemplate.findMany({
+        where: { id: { in: tplIds } },
+        include: { fields: { orderBy: { order: 'asc' } } },
+      });
+      const tplMap = new Map(tpls.map((t) => [t.id, t]));
+      dynamicFlat = dynamicRows.map((r) => {
+        const tpl = tplMap.get(r.templateId);
+        let parsed = {};
+        try { parsed = JSON.parse(r.data || '{}'); } catch { parsed = {}; }
+        return {
+          ...r,
+          scanType: 'dynamic', type: 'dynamic', date: r.createdAt,
+          templateKey: tpl?.key, templateName: tpl?.name, templateNameAr: tpl?.nameAr,
+          templateFields: tpl?.fields || [], scanLabel: tpl?.name || 'Dynamic Scan',
+          _data: parsed,
+        };
+      });
+    }
+
+    const flat = [...grouped.flat(), ...dynamicFlat].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     return res.json(flat);
   } catch (error) {
     return res.status(500).json({ message: 'Failed to get patient scan history', error: error.message });
@@ -1164,7 +1195,7 @@ const getAllScansForPatient = async (req, res) => {
 
 const getScanStats = async (req, res) => {
   try {
-    const [petct, psma, thyroid, bone, renal, gastric, meckel, cardiac] = await Promise.all([
+    const [petct, psma, thyroid, bone, renal, gastric, meckel, cardiac, dynamic] = await Promise.all([
       prisma.scanPETCT.count(),
       prisma.scanPSMAPETCT.count(),
       prisma.scanThyroid.count(),
@@ -1173,9 +1204,10 @@ const getScanStats = async (req, res) => {
       prisma.scanGastric.count(),
       prisma.scanMeckel.count(),
       prisma.scanCardiac.count(),
+      prisma.dynamicScan.count(),
     ]);
 
-    const total = petct + psma + thyroid + bone + renal + gastric + meckel + cardiac;
+    const total = petct + psma + thyroid + bone + renal + gastric + meckel + cardiac + dynamic;
 
     return res.json({
       total,
@@ -1187,6 +1219,7 @@ const getScanStats = async (req, res) => {
       gastric,
       meckel,
       cardiac,
+      dynamic,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to get scan stats', error: error.message });

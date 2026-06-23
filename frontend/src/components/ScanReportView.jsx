@@ -161,11 +161,79 @@ const VitalsTable = ({ rows }) => {
   );
 };
 
+// ---- Dynamic (admin-defined) sheets ----
+const DYN_SECTION_META = {
+  doctor: { title: 'Clinical / Referral', Icon: Stethoscope },
+  nurse: { title: 'Preparation', Icon: User },
+  tech: { title: 'Acquisition', Icon: Activity },
+  results: { title: 'Findings', Icon: FlaskConical },
+};
+const DYN_SECTION_ORDER = ['doctor', 'nurse', 'tech', 'results'];
+
+const formatDynamicVal = (field, val) => {
+  if (val === null || val === undefined || val === '') return null;
+  const t = field.type;
+  if (t === 'vitalsTable') {
+    const rows = parseVitals(val);
+    return rows && rows.length ? '__VITALS__' : null;
+  }
+  if (t === 'multiselect') {
+    const arr = parseArr(val).filter((x) => x != null && x !== '');
+    return arr.length ? arr.join(', ') : null;
+  }
+  if (t === 'checkbox') return (val === true || val === 'true' || val === 1) ? 'Yes' : 'No';
+  if (t === 'date') { const d = new Date(val); if (!isNaN(d.getTime())) return format(d, 'dd MMM yyyy'); }
+  if (t === 'datetime') { const d = new Date(val); if (!isNaN(d.getTime())) return format(d, 'dd MMM yyyy · HH:mm'); }
+  if (typeof val === 'object') return null;
+  return String(val);
+};
+
+const DynamicReportBody = ({ record }) => {
+  const data = record._data || (() => { try { return JSON.parse(record.data || '{}'); } catch { return {}; } })();
+  const fields = record.templateFields || [];
+  const sections = DYN_SECTION_ORDER
+    .map((sec) => ({
+      key: sec,
+      ...DYN_SECTION_META[sec],
+      items: fields
+        .filter((f) => (f.section || 'doctor') === sec && f.key !== 'impression' && f.key !== 'physicianNotes')
+        .map((f) => ({ field: f, value: formatDynamicVal(f, data[f.key]) }))
+        .filter((it) => it.value !== null),
+    }))
+    .filter((s) => s.title && s.items.length > 0);
+
+  return (
+    <>
+      {sections.map(({ key, title, Icon, items }) => (
+        <div className="sr-section" key={key}>
+          <div className="sr-section-title"><Icon size={14} /> {title}</div>
+          <div className="sr-grid">
+            {items.map(({ field, value }) => (
+              field.type === 'vitalsTable' ? (
+                <div className="sr-item wide" key={field.key}>
+                  <span className="sr-label">{field.label || humanize(field.key)}</span>
+                  <VitalsTable rows={parseVitals(data[field.key])} />
+                </div>
+              ) : (
+                <div className={`sr-item ${isWide(field.key, value) ? 'wide' : ''}`} key={field.key}>
+                  <span className="sr-label">{field.label || humanize(field.key)}</span>
+                  <span className="sr-value">{value}</span>
+                </div>
+              )
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+};
+
 const ScanReportView = ({ record }) => {
   const type = record.scanType || record._scanType || record.type;
   const patient = record.patient || {};
   const dateVal = record.date || record.createdAt;
   const age = ageFrom(patient.birthDate);
+  const isDynamic = type === 'dynamic' && Array.isArray(record.templateFields);
 
   const entries = Object.entries(record).filter(([k, v]) => !HIDDEN.has(k) && formatVal(k, v) !== null);
 
@@ -183,7 +251,7 @@ const ScanReportView = ({ record }) => {
       {/* Letterhead */}
       <div className="sr-head">
         <div className="sr-head-left">
-          <span className="sr-type-badge">{SCAN_LABEL[type] || type}</span>
+          <span className="sr-type-badge">{isDynamic ? (record.templateName || 'Custom Sheet') : (SCAN_LABEL[type] || type)}</span>
           <h4 className="sr-doc-title">Nuclear Medicine Report</h4>
         </div>
         <div className="sr-head-right">
@@ -197,7 +265,9 @@ const ScanReportView = ({ record }) => {
         </div>
       </div>
 
-      {sections.map(({ key, title, Icon, items }) => (
+      {isDynamic && <DynamicReportBody record={record} />}
+
+      {!isDynamic && sections.map(({ key, title, Icon, items }) => (
         <div className="sr-section" key={key}>
           <div className="sr-section-title"><Icon size={14} /> {title}</div>
           <div className="sr-grid">

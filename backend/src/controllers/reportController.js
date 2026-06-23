@@ -56,7 +56,7 @@ const generateReport = async (req, res) => {
   const { scanType, scanId } = req.params;
   const format = (req.query.format || 'pdf').toLowerCase();
 
-  if (!TYPE_TO_MODEL[scanType]) {
+  if (scanType !== 'dynamic' && !TYPE_TO_MODEL[scanType]) {
     return res.status(400).json({ message: `Invalid scan type: ${scanType}` });
   }
   if (format !== 'pdf' && format !== 'docx') {
@@ -78,10 +78,12 @@ const generateReport = async (req, res) => {
     });
 
     // Need patientId for the row + a sanitized patient name for the filename.
-    const accessor = (() => {
-      const m = TYPE_TO_MODEL[scanType];
-      return m.charAt(0).toLowerCase() + m.slice(1);
-    })();
+    const accessor = scanType === 'dynamic'
+      ? 'dynamicScan'
+      : (() => {
+          const m = TYPE_TO_MODEL[scanType];
+          return m.charAt(0).toLowerCase() + m.slice(1);
+        })();
     const scan = await prisma[accessor].findUnique({
       where: { id: scanId },
       select: { patientId: true, patient: { select: { name: true } } },
