@@ -413,3 +413,19 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+.report-export {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.report-export-meta {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.report-export .btn svg {
+  margin-inline-end: 4px;
+  vertical-align: -2px;
+}

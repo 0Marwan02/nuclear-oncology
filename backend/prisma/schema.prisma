@@ -994,3 +994,25 @@ model RolePermission {
 
   @@unique([role, permission])
 }
+
+model GeneratedReport {
+  id           String   @id @default(uuid())
+  scanType     String
+  scanId       String
+  patientId    String
+  reportNumber String
+  version      Int      @default(1)
+  format       String
+  fileUrl      String
+  fileName     String
+  generatedBy  String
+  generatedAt  DateTime @default(now())
+
+  @@index([scanId])
+  @@index([patientId])
+}
+
+model Counter {
+  key   String @id
+  value Int    @default(0)
+}

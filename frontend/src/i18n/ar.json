@@ -454,5 +454,12 @@
   "nav.scans_cardiac": "فحص القلب (MPI)",
   "cardiac.title": "فحص تروية عضلة القلب",
   "cardiac.subtitle": "تصوير تروية عضلة القلب — Tc-99m / Tl-201",
-  "cardiac.history": "سجل فحوصات القلب"
+  "cardiac.history": "سجل فحوصات القلب",
+  "report.export_pdf": "تصدير PDF",
+  "report.export_word": "تصدير Word",
+  "report.exporting": "جارٍ التصدير…",
+  "report.export_failed": "فشل تصدير التقرير",
+  "report.number": "رقم التقرير",
+  "report.version": "الإصدار",
+  "report.not_generated": "لم يتم إنشاء تقرير بعد"
 }

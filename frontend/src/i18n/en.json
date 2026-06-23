@@ -1,7 +1,6 @@
 {
   "app.name": "Nuclear Oncology Center",
   "app.subtitle": "Assiut University",
-
   "nav.dashboard": "Dashboard",
   "nav.patients": "Patients",
   "nav.clinics": "Clinics",
@@ -30,7 +29,6 @@
   "nav.logout": "Logout",
   "nav.language": "العربية",
   "nav.settings": "Settings",
-
   "settings.title": "Account Settings",
   "settings.subtitle": "Manage your profile and password",
   "settings.profile": "Profile",
@@ -51,7 +49,6 @@
   "settings.pwd_mismatch": "New passwords do not match",
   "settings.load_failed": "Failed to load profile",
   "common.saving": "Saving...",
-
   "common.save": "Save",
   "common.cancel": "Cancel",
   "common.edit": "Edit",
@@ -99,7 +96,6 @@
   "common.female": "Female",
   "common.active": "Active",
   "common.inactive": "Inactive",
-
   "status.registered": "Registered",
   "status.prepared": "Prepared",
   "status.scanned": "Scanned",
@@ -109,7 +105,6 @@
   "status.finished": "Finished",
   "status.overdue": "Overdue",
   "status.upcoming": "Upcoming",
-
   "auth.login": "Login",
   "auth.hospital_id": "Hospital ID",
   "auth.password": "Password",
@@ -117,7 +112,6 @@
   "auth.login_error": "Invalid credentials",
   "auth.welcome": "Welcome",
   "auth.nuclear_center": "Nuclear Oncology Center — Assiut University",
-
   "dashboard.title": "Main Dashboard",
   "dashboard.total_patients": "Total Patients",
   "dashboard.today_visits": "Today's Visits",
@@ -126,7 +120,6 @@
   "dashboard.quick_stats": "Quick Stats",
   "dashboard.workflow_summary": "Workflow Summary",
   "dashboard.view_all_patients": "View All Patients",
-
   "patient.title": "Patients",
   "patient.add_new": "Add New Patient",
   "patient.search_placeholder": "Search by name or national ID...",
@@ -157,7 +150,6 @@
   "patient.no_scan_history": "No scan history found",
   "patient.no_thyroid_cancer_file": "No Thyroid Cancer follow-up records for this patient yet.",
   "patient.no_thyroid_disease_file": "No Thyroid Disease follow-up records for this patient yet.",
-
   "case.diagnosis": "Diagnosis",
   "case.cancer_type": "Cancer Type",
   "case.cancer_stage": "Cancer Stage",
@@ -166,7 +158,6 @@
   "case.status": "Status",
   "case.edit_status": "Edit Status",
   "case.new": "New Case",
-
   "visit.add": "Add Visit",
   "visit.date": "Visit Date",
   "visit.weight": "Weight (kg)",
@@ -179,7 +170,6 @@
   "visit.nurse_notes": "Nurse Notes",
   "visit.injection_site": "Injection Site",
   "visit.pregnancy_status": "Pregnancy / LMP",
-
   "workflow.registered": "Registered",
   "workflow.prepared": "Prepared",
   "workflow.scanned": "Scanned",
@@ -213,7 +203,6 @@
   "ehist.current": "Current",
   "ehist.prev": "Previous",
   "ehist.done": "Done",
-
   "physician.title": "Physician Workspace",
   "physician.subtitle": "Assess new patients and review scan reports",
   "physician.assessment_queue": "Awaiting Assessment",
@@ -241,7 +230,6 @@
   "physician.thyroid_cancer": "Thyroid Cancer",
   "physician.thyroid_diseases": "Thyroid Diseases",
   "physician.files": "files",
-
   "nurse.title": "Nurse Station",
   "nurse.subtitle": "Prepare patients and record vital signs",
   "nurse.waiting": "Waiting",
@@ -271,7 +259,6 @@
   "nurse.no_patients": "No patients awaiting preparation",
   "nurse.thyroid_medication_warning": "Medications not stopped — Eltroxin/Carbimazole must stop 5 days before scan",
   "nurse.choose": "Choose",
-
   "technician.title": "Technician Dashboard",
   "technician.subtitle": "Ready scans queue and technical data entry",
   "technician.ready_count": "Ready for Scan",
@@ -303,7 +290,6 @@
   "technician.scan_mode_whole_body": "Whole Body",
   "technician.scan_mode_spect": "SPECT",
   "technician.scan_mode_spect_ct": "SPECT/CT",
-
   "reception.title": "Reception",
   "reception.subtitle": "Patient registration and encounter management",
   "reception.new_encounter": "New Encounter",
@@ -314,7 +300,6 @@
   "reception.encounter_opened": "Encounter opened successfully",
   "reception.register_patient": "Register New Patient",
   "reception.open_visit": "Open Visit",
-
   "admin.users.title": "User Management",
   "admin.users.create": "Create User",
   "admin.users.hospital_id": "Hospital ID",
@@ -330,7 +315,6 @@
   "admin.users.role_admin": "Admin",
   "admin.users.national_id": "National ID",
   "admin.users.phone": "Phone",
-
   "admin.logs.title": "Audit Logs",
   "admin.logs.user": "User",
   "admin.logs.action": "Action",
@@ -340,7 +324,6 @@
   "admin.logs.old_values": "Old Values",
   "admin.logs.new_values": "New Values",
   "admin.logs.no_logs": "No audit logs found",
-
   "admin.permissions.title": "Permission Management",
   "admin.permissions.subtitle": "Control role-level and per-user permissions",
   "admin.permissions.role_matrix": "Role Matrix",
@@ -374,7 +357,6 @@
   "admin.permissions.source_user_granted": "Granted",
   "admin.permissions.source_user_revoked": "Revoked",
   "admin.permissions.reset_override": "Remove override (revert to role default)",
-
   "clinic.follow_up_date": "Follow-up Date",
   "clinic.physician_notes": "Physician Notes",
   "clinic.save": "Save Follow-up",
@@ -382,7 +364,6 @@
   "clinic.no_history": "No follow-up history",
   "clinic.search_patient": "Search patient",
   "clinic.select_patient": "Select a patient to view their file",
-
   "clinic.cancer.title": "Thyroid Cancer — DTC Follow-up",
   "clinic.cancer.subtitle": "Differentiated Thyroid Cancer follow-up records",
   "clinic.cancer.new_record": "New Cancer Follow-up",
@@ -392,7 +373,6 @@
   "clinic.cancer.treatment_plan": "Treatment Plan",
   "clinic.cancer.response": "Response to Therapy",
   "clinic.cancer.recurrence": "Recurrence Signs",
-
   "clinic.disease.title": "Thyroid Disease — Benign Follow-up",
   "clinic.disease.subtitle": "Benign thyroid disease follow-up records",
   "clinic.disease.new_record": "New Disease Follow-up",
@@ -405,7 +385,6 @@
   "clinic.disease.symptoms": "Symptoms",
   "clinic.disease.current_medication": "Current Medication",
   "clinic.disease.dose_adjustment": "Dose Adjustment",
-
   "scan.petct.title": "FDG PET/CT",
   "scan.psma.title": "PSMA PET/CT",
   "scan.thyroid.title": "Thyroid Scan",
@@ -431,29 +410,24 @@
   "scan.locked": "Locked",
   "scan.type": "Scan Type",
   "scan.view_details": "View Details",
-
   "ehistory.panel_title": "Electronic History (E-History)",
   "ehistory.latest": "Latest",
   "ehistory.previous": "Previous",
   "ehistory.compare": "Compare",
   "ehistory.loading": "Loading prior records…",
   "ehistory.no_history": "No prior scan history",
-
   "search.placeholder": "Search patients... (Ctrl+K)",
   "search.results": "Search Results",
   "search.no_results": "No matching results",
   "search.recent": "Recent Searches",
-
   "error.load_failed": "Failed to load data",
   "error.save_failed": "Failed to save data",
   "error.network": "Network error",
   "error.unauthorized": "Unauthorized",
   "error.not_found": "Not found",
   "error.locked": "This record is locked and cannot be modified",
-
   "global_search.title": "Global Search",
   "global_search.hint": "Press Ctrl+K to search",
-
   "perm.patient:create": "Create Patient Record",
   "perm.patient:view": "View Patient List",
   "perm.patient:view_profile": "View Patient Profile",
@@ -474,12 +448,18 @@
   "perm.admin:users": "Manage Users",
   "perm.admin:logs": "View Audit Logs",
   "perm.admin:permissions": "Manage Permissions",
-
   "cat.Patient Management": "Patient Management",
   "cat.Clinical Data": "Clinical Data",
   "cat.Workflow Stages": "Workflow Stages",
   "cat.Clinic Files": "Clinic Files",
   "cat.Scans": "Scans",
   "cat.Appointments": "Appointments",
-  "cat.Administration": "Administration"
+  "cat.Administration": "Administration",
+  "report.export_pdf": "Export PDF",
+  "report.export_word": "Export Word",
+  "report.exporting": "Exporting…",
+  "report.export_failed": "Failed to export report",
+  "report.number": "Report No.",
+  "report.version": "Version",
+  "report.not_generated": "No report generated yet"
 }

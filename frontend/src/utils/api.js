@@ -1,5 +1,8 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
+// Origin that serves static files (/uploads/...) — the API base minus trailing /api.
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
+
 export const apiFetch = async (endpoint, options = {}) => {
   const token = localStorage.getItem('auth_token');
   const headers = {
@@ -92,6 +95,15 @@ export const getNurseQueue = () => {
 
 export const searchPatients = (query) => {
   return apiFetch(`/patients?q=${encodeURIComponent(query)}`);
+};
+
+// === Report export (WS3) ===
+export const exportReport = (scanType, scanId, format = 'pdf') => {
+  return apiFetch(`/reports/${scanType}/${scanId}?format=${format}`, { method: 'POST' });
+};
+
+export const getReportVersions = (scanType, scanId) => {
+  return apiFetch(`/reports/${scanType}/${scanId}`);
 };
 
 export const getMe = () => apiFetch('/auth/me');

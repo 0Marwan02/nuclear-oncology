@@ -16,6 +16,8 @@ const adminRoutes = require('./routes/admin');
 
 const scansRoutes = require('./routes/scans');
 const workflowRoutes = require('./routes/workflow');
+const reportsRoutes = require('./routes/reports');
+const { ensureReportsDir } = require('./controllers/reportController');
 
 
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
@@ -41,12 +43,16 @@ app.use('/api/admin', adminRoutes);
 
 app.use('/api/scans', scansRoutes);
 app.use('/api/workflow', workflowRoutes);
+app.use('/api/reports', reportsRoutes);
 
 
 
 // Static files for uploads
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+
+// Ensure the generated-reports folder exists under the served uploads dir.
+ensureReportsDir();
 
 app.get('/', (req, res) => {
   res.json({ message: 'Nuclear Oncology API is running' });

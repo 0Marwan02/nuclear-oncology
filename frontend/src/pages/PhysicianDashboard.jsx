@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../i18n/index';
-import { apiFetch, getWorkflowAll, advanceWorkflow } from '../utils/api';
+import { apiFetch, getWorkflowAll, advanceWorkflow, exportReport, getReportVersions, API_ORIGIN } from '../utils/api';
 import { useQueueSocket } from '../utils/socket';
 import WorkflowProgress from '../components/WorkflowProgress';
 import ScanReportView from '../components/ScanReportView';
 import ReturnAction from '../components/ReturnAction';
-import { FileText, FolderOpen, PenTool, ChevronDown, ChevronUp, CheckCircle, ClipboardList, Activity, Pill, Scan, Bone, Droplet, Search, Plus, HeartPulse } from 'lucide-react';
+import { FileText, FolderOpen, PenTool, ChevronDown, ChevronUp, CheckCircle, ClipboardList, Activity, Pill, Scan, Bone, Droplet, Search, Plus, HeartPulse, FileDown, FileType } from 'lucide-react';
 import { getFileInfo } from '../utils/fileColor';
 import { format } from 'date-fns';
 import './PhysicianDashboard.css';
@@ -20,6 +20,62 @@ const SCAN_SHORTCUTS = [
   { label: 'Gastric', icon: Search, path: '/scans/gastric', color: '#10b981' },
   { label: 'Cardiac', icon: HeartPulse, path: '/scans/cardiac', color: '#ef4444' },
 ];
+
+// Export PDF / Word buttons + current report number / version display.
+const ReportExport = ({ record, t }) => {
+  const scanType = record._scanType || record.scanType;
+  const [versions, setVersions] = useState([]);
+  const [busy, setBusy] = useState('');
+  const [err, setErr] = useState('');
+
+  const loadVersions = useCallback(async () => {
+    try {
+      const rows = await getReportVersions(scanType, record.id);
+      setVersions(rows || []);
+    } catch { /* non-fatal */ }
+  }, [scanType, record.id]);
+
+  useEffect(() => { loadVersions(); }, [loadVersions]);
+
+  const handleExport = async (format) => {
+    setBusy(format);
+    setErr('');
+    try {
+      const res = await exportReport(scanType, record.id, format);
+      window.open(API_ORIGIN + res.fileUrl, '_blank');
+      await loadVersions();
+    } catch (e) {
+      setErr(e.message || t('report.export_failed'));
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const current = versions[0];
+
+  return (
+    <div className="report-export">
+      <div className="report-export-meta">
+        {current ? (
+          <span className="text-muted">
+            {t('report.number')}: <strong>{current.reportNumber}</strong> · {t('report.version')} v{current.version}
+          </span>
+        ) : (
+          <span className="text-muted">{t('report.not_generated')}</span>
+        )}
+      </div>
+      <div className="report-export-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-sm" disabled={!!busy} onClick={() => handleExport('pdf')}>
+          <FileDown size={16} /> {busy === 'pdf' ? t('report.exporting') : t('report.export_pdf')}
+        </button>
+        <button type="button" className="btn btn-sm" disabled={!!busy} onClick={() => handleExport('docx')}>
+          <FileType size={16} /> {busy === 'docx' ? t('report.exporting') : t('report.export_word')}
+        </button>
+      </div>
+      {err && <div className="error-banner" style={{ marginTop: 8 }}>{err}</div>}
+    </div>
+  );
+};
 
 const PhysicianDashboard = () => {
   const navigate = useNavigate();
@@ -196,6 +252,7 @@ const PhysicianDashboard = () => {
                     <div className="record-body">
                       <WorkflowProgress status={record.workflowStatus || 'Pending_Report'} />
                       <ScanReportView record={record} />
+                      <ReportExport record={record} t={t} />
                       <form onSubmit={(e) => { e.preventDefault(); handleComplete(record); }} className="report-form">
                         <div className="form-group">
                           <label>{t('physician.impression')} <span className="required-mark">*</span></label>
