@@ -33,7 +33,7 @@ const TechnicianDashboard = () => {
   const [submittingId, setSubmittingId] = useState(null);
   const [scanForm, setScanForm] = useState({
     dose: '', doseUnit: 'mCi', injectionTime: '', scanTime: '',
-    scanMode: 'Static', delayedImages: false, notes: '',
+    scanMode: [], delayedImages: false, notes: '',
   });
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -83,7 +83,7 @@ const TechnicianDashboard = () => {
       setPreparedRecords(prev => prev.filter(p => p.id !== record.id));
       setScannedToday(prev => [...prev, record]);
       setExpandedId(null);
-      setScanForm({ dose: '', doseUnit: 'mCi', injectionTime: '', scanTime: '', scanMode: 'Static', delayedImages: false, notes: '' });
+      setScanForm({ dose: '', doseUnit: 'mCi', injectionTime: '', scanTime: '', scanMode: [], delayedImages: false, notes: '' });
       setSuccessMsg(t('technician.scan_saved'));
     } catch (err) {
       setError(err.message || t('technician.save_failed'));
@@ -92,9 +92,30 @@ const TechnicianDashboard = () => {
     }
   };
 
-  const toggleExpand = (id) => {
-    setExpandedId(expandedId === id ? null : id);
-    setScanForm({ dose: '', injectionTime: '', scanTime: '', notes: '' });
+  const parseScanMode = (val) => {
+    if (Array.isArray(val)) return val;
+    if (!val) return [];
+    try { const p = JSON.parse(val); return Array.isArray(p) ? p : [val]; } catch { return [val]; }
+  };
+
+  const toggleScanMode = (mode) => {
+    setScanForm(f => {
+      const cur = Array.isArray(f.scanMode) ? f.scanMode : [];
+      return { ...f, scanMode: cur.includes(mode) ? cur.filter(m => m !== mode) : [...cur, mode] };
+    });
+  };
+
+  const toggleExpand = (id, record) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(id);
+      setScanForm({
+        dose: '', doseUnit: 'mCi', injectionTime: '', scanTime: '',
+        scanMode: parseScanMode(record?.scanMode),
+        delayedImages: false, notes: '',
+      });
+    }
   };
 
   if (loading) return <div className="dashboard-loading"><div className="spinner" /> {t('common.loading')}</div>;
@@ -150,7 +171,7 @@ const TechnicianDashboard = () => {
 
             return (
               <div key={record.id} className={`record-card ${expandedId === record.id ? 'expanded' : ''}`}>
-                <div className="record-header" onClick={() => toggleExpand(record.id)}>
+                <div className="record-header" onClick={() => toggleExpand(record.id, record)}>
                   <div className="patient-info">
                     <h3>{patient.name || t('common.unknown')}</h3>
                     <span className="text-muted">{patient.nationalId || ''}</span>
@@ -226,13 +247,19 @@ const TechnicianDashboard = () => {
                       <div className="form-row-2">
                         <div className="form-group">
                           <label>{t('technician.scan_mode')}</label>
-                          <select name="scanMode" value={scanForm.scanMode} onChange={handleFormChange} className="touch-input">
-                            <option value="Static">{t('technician.scan_mode_static')}</option>
-                            <option value="Dynamic">{t('technician.scan_mode_dynamic')}</option>
-                            <option value="Whole Body">{t('technician.scan_mode_whole_body')}</option>
-                            <option value="SPECT">{t('technician.scan_mode_spect')}</option>
-                            <option value="SPECT/CT">{t('technician.scan_mode_spect_ct')}</option>
-                          </select>
+                          <div className="radio-group">
+                            {(record._scanType === 'cardiac'
+                              ? ['Rest', 'Stress', 'Delayed', 'Redistribution', 'Re-injection']
+                              : ['Static', 'Dynamic', 'Whole Body', 'SPECT', 'SPECT/CT']
+                            ).map(mode => (
+                              <button
+                                key={mode}
+                                type="button"
+                                className={`radio-chip${(scanForm.scanMode || []).includes(mode) ? ' active' : ''}`}
+                                onClick={() => toggleScanMode(mode)}
+                              >{mode}</button>
+                            ))}
+                          </div>
                         </div>
                         <div className="form-group">
                           <label>{t('technician.delayed_images')}</label>

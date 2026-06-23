@@ -334,3 +334,27 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* Scan-mode chip toggle group */
+.radio-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.radio-chip {
+  padding: 6px 14px;
+  border: 1.5px solid var(--border-medium);
+  border-radius: 20px;
+  background: white;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-base);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+  line-height: 1.4;
+}
+@media (hover: hover) and (pointer: fine) {
+  .radio-chip:hover { border-color: #16a34a; background: #f0fdf4; }
+}
+.radio-chip.active { border-color: #16a34a; background: #dcfce7; color: #15803d; font-weight: 600; }
+.radio-chip input { display: none; }
