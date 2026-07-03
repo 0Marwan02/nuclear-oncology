@@ -237,6 +237,7 @@ const ScanRenal = () => {
       } else {
         setSuccess('Renal scan record created — sent to nurse.');
         setFormData(emptyForm());
+        setSelectedPatient(null);
       }
       setHistoryLoading(true);
       getScanHistory('renal', selectedPatient.id)

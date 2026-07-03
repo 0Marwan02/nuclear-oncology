@@ -125,7 +125,9 @@ const buildTechnicalData = (type, technical = {}) => {
     if (type === 'gastric') assign(data, 'scanStartTime', safeDate(technical.scanTime));
     else assign(data, 'scanTime', safeDate(technical.scanTime));
   }
-  if (technical.scanMode) data.scanMode = technical.scanMode;
+  if (technical.scanMode) {
+    data.scanMode = typeof technical.scanMode === 'string' ? technical.scanMode : JSON.stringify(technical.scanMode);
+  }
   if (technical.delayedImages != null) data.delayedImages = Boolean(technical.delayedImages);
   if (technical.notes) data.technicianNotes = technical.notes;
   return data;

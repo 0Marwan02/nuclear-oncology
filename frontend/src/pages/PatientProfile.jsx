@@ -61,6 +61,18 @@ const PatientProfile = () => {
     { key: 'scan_history', label: t('patient.tabs.scan_history') },
   ];
 
+  const allScans = patient ? [
+    ...(patient.scanPETCTs || []).map(s => ({ ...s, scanType: 'petct' })),
+    ...(patient.scanPSMAPETCTs || []).map(s => ({ ...s, scanType: 'psma' })),
+    ...(patient.scanThyroids || []).map(s => ({ ...s, scanType: 'thyroid' })),
+    ...(patient.scanBones || []).map(s => ({ ...s, scanType: 'bone' })),
+    ...(patient.scanRenals || []).map(s => ({ ...s, scanType: 'renal' })),
+    ...(patient.scanGastrics || []).map(s => ({ ...s, scanType: 'gastric' })),
+    ...(patient.scanMeckels || []).map(s => ({ ...s, scanType: 'meckel' })),
+    ...(patient.scanCardiacs || []).map(s => ({ ...s, scanType: 'cardiac' })),
+    ...(patient.dynamicScans || []).map(s => ({ ...s, scanType: s.type || 'dynamic' })),
+  ] : [];
+
   return (
     <div className="patient-profile">
       <div className="profile-banner">
@@ -150,7 +162,7 @@ const PatientProfile = () => {
             <div className="content-right">
               <div className="info-card">
                 <h3>{t('patient.visits_timeline')}</h3>
-                <VisitsTimeline visits={patient.visits} onVisitUpdated={fetchPatient} />
+                <VisitsTimeline visits={patient.visits} scans={allScans} onVisitUpdated={fetchPatient} />
               </div>
             </div>
           </div>

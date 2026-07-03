@@ -11,6 +11,8 @@ export default function AdminUsers() {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ hospitalId: '', name: '', role: 'doctor', password: '', nationalId: '', phone: '' });
   const [parsedStaff, setParsedStaff] = useState(null);
+  const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const handleNationalIdChange = (e) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 14);
@@ -48,14 +50,21 @@ export default function AdminUsers() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const errors = {};
+    if (!formData.hospitalId.trim()) errors.hospitalId = 'Hospital ID is required';
+    if (!formData.name.trim()) errors.name = 'Full name is required';
+    if (!formData.password || formData.password.length < 6) errors.password = 'Password must be at least 6 characters';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     try {
       await apiFetch('/admin/users', { method: 'POST', body: JSON.stringify(formData) });
       setShowModal(false);
       setFormData({ hospitalId: '', name: '', role: 'doctor', password: '', nationalId: '', phone: '' });
+      setFieldErrors({});
+      setFormError('');
       fetchUsers();
     } catch (err) {
-      console.error(err);
-      alert(t('error.save_failed'));
+      setFormError(err.message || t('error.save_failed'));
     }
   };
 
@@ -117,22 +126,26 @@ export default function AdminUsers() {
             <form onSubmit={handleSubmit} className="admin-form">
               <div className="form-group">
                 <label>{t('admin.users.hospital_id')}</label>
-                <input required value={formData.hospitalId} onChange={e => setFormData({...formData, hospitalId: e.target.value})} />
+                <input value={formData.hospitalId} onChange={e => setFormData({...formData, hospitalId: e.target.value})}
+                  className={fieldErrors.hospitalId ? 'invalid-input' : ''} />
+                {fieldErrors.hospitalId && <span className="field-error">{fieldErrors.hospitalId}</span>}
               </div>
               <div className="form-group">
                 <label>{t('patient.name')}</label>
-                <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                  className={fieldErrors.name ? 'invalid-input' : ''} />
+                {fieldErrors.name && <span className="field-error">{fieldErrors.name}</span>}
               </div>
               <div className="form-group">
                 <label>{t('admin.users.national_id')}</label>
-                <input required value={formData.nationalId} onChange={handleNationalIdChange} maxLength={14} minLength={14} placeholder="14 digits" />
+                <input value={formData.nationalId} onChange={handleNationalIdChange} maxLength={14} minLength={14} placeholder="14 digits" />
                 {parsedStaff && (
                   <p className="field-hint">{parsedStaff.age} — {parsedStaff.gender === 'Male' ? t('common.male') : t('common.female')}</p>
                 )}
               </div>
               <div className="form-group">
                 <label>{t('admin.users.phone')}</label>
-                <input required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="e.g. 01012345678" />
+                <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="e.g. 01012345678" inputMode="numeric" maxLength={11} />
               </div>
               <div className="form-group">
                 <label>{t('admin.users.role')}</label>
@@ -145,10 +158,13 @@ export default function AdminUsers() {
               </div>
               <div className="form-group">
                 <label>{t('admin.users.password')}</label>
-                <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
+                  className={fieldErrors.password ? 'invalid-input' : ''} />
+                {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
               </div>
+              {formError && <div className="error-banner" style={{ marginBottom: 8 }}>{formError}</div>}
               <div className="modal-actions">
-                <button type="button" className="btn text" onClick={() => setShowModal(false)}>{t('common.cancel')}</button>
+                <button type="button" className="btn text" onClick={() => { setShowModal(false); setFieldErrors({}); setFormError(''); }}>{t('common.cancel')}</button>
                 <button type="submit" className="btn primary">{t('admin.users.create')}</button>
               </div>
             </form>

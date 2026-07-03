@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getWorkflowAll, advanceWorkflow } from '../utils/api';
+import { getWorkflowAll, advanceWorkflow, getDailyStats } from '../utils/api';
 import { useQueueSocket } from '../utils/socket';
 import { useTranslation } from '../i18n/index';
 import WorkflowProgress from '../components/WorkflowProgress';
@@ -26,22 +26,27 @@ const TechnicianDashboard = () => {
   const { t } = useTranslation();
   const [preparedRecords, setPreparedRecords] = useState([]);
   const [scannedToday, setScannedToday] = useState([]);
+  const [dailyStats, setDailyStats] = useState({ myCasesToday: 0, hospitalCasesToday: 0 });
   const [selectedType, setSelectedType] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [submittingId, setSubmittingId] = useState(null);
   const [scanForm, setScanForm] = useState({
-    dose: '', doseUnit: 'mCi', injectionTime: '', scanTime: '',
+    dose: '', doseUnit: 'MBq', injectionTime: '', scanTime: '',
     scanMode: [], delayedImages: false, notes: '',
   });
   const [successMsg, setSuccessMsg] = useState('');
 
   const fetchPrepared = useCallback(async () => {
     try {
-      const combined = await getWorkflowAll({ status: 'Pending_Technical' });
+      const [combined, stats] = await Promise.all([
+        getWorkflowAll({ status: 'Pending_Technical' }),
+        getDailyStats()
+      ]);
       combined.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       setPreparedRecords(combined.map((r) => ({ ...r, _scanType: r.scanType })));
+      setDailyStats(stats);
     } catch (err) {
       setError(err.message || t('technician.load_failed'));
     } finally {
@@ -82,8 +87,12 @@ const TechnicianDashboard = () => {
       });
       setPreparedRecords(prev => prev.filter(p => p.id !== record.id));
       setScannedToday(prev => [...prev, record]);
+      setDailyStats(prev => ({ 
+        myCasesToday: prev.myCasesToday + 1, 
+        hospitalCasesToday: prev.hospitalCasesToday + 1 
+      }));
       setExpandedId(null);
-      setScanForm({ dose: '', doseUnit: 'mCi', injectionTime: '', scanTime: '', scanMode: [], delayedImages: false, notes: '' });
+      setScanForm({ dose: '', doseUnit: 'MBq', injectionTime: '', scanTime: '', scanMode: [], delayedImages: false, notes: '' });
       setSuccessMsg(t('technician.scan_saved'));
     } catch (err) {
       setError(err.message || t('technician.save_failed'));
@@ -111,7 +120,7 @@ const TechnicianDashboard = () => {
     } else {
       setExpandedId(id);
       setScanForm({
-        dose: '', doseUnit: 'mCi', injectionTime: '', scanTime: '',
+        dose: '', doseUnit: 'MBq', injectionTime: '', scanTime: '',
         scanMode: parseScanMode(record?.scanMode),
         delayedImages: false, notes: '',
       });
@@ -133,14 +142,14 @@ const TechnicianDashboard = () => {
       {successMsg && <div className="success-banner">{successMsg}</div>}
       {error && <div className="error-banner">{error}</div>}
 
-      <div className="stats-row">
-        <div className="mini-stat">
-          <BarChart3 size={20} />
-          <div><span className="mini-stat-value">{preparedRecords.length}</span><span className="mini-stat-label">{t('technician.waiting')}</span></div>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ flex: 1, backgroundColor: '#fff', padding: '1rem 1.5rem', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '4px solid #7c3aed' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{t('dashboard.my_cases_today')}</h4>
+          <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#111827' }}>{dailyStats.myCasesToday}</div>
         </div>
-        <div className="mini-stat">
-          <CheckCircle size={20} />
-          <div><span className="mini-stat-value">{scannedToday.length}</span><span className="mini-stat-label">{t('technician.done_today')}</span></div>
+        <div style={{ flex: 1, backgroundColor: '#fff', padding: '1rem 1.5rem', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '4px solid #10b981' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{t('dashboard.hospital_cases_today')}</h4>
+          <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#111827' }}>{dailyStats.hospitalCasesToday}</div>
         </div>
       </div>
 

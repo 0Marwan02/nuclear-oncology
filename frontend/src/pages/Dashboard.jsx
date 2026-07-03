@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { apiFetch } from '../utils/api';
+import { apiFetch, getDailyStats } from '../utils/api';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, Activity, CheckCircle, Clock } from 'lucide-react';
+import { Users, Activity, CheckCircle, Clock, BarChart3 } from 'lucide-react';
+import { useTranslation } from '../i18n/index';
 import './Dashboard.css';
 
 const ROLE_REDIRECTS = {
@@ -17,7 +18,9 @@ const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
 const toRawCategory = (displayName) => displayName.replace(/ /g, '_');
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState(null);
+  const [dailyStats, setDailyStats] = useState({ myCasesToday: 0, hospitalCasesToday: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -25,14 +28,24 @@ const Dashboard = () => {
   const userStr = localStorage.getItem('auth_user');
   const user = userStr ? JSON.parse(userStr) : null;
 
-  if (user && ROLE_REDIRECTS[user.role]) {
-    return <Navigate to={ROLE_REDIRECTS[user.role]} replace />;
-  }
-
+  // We defer the redirect decision to the API response. 
+  // If the user lacks admin:dashboard permission, the API returns 403.
   useEffect(() => {
-    apiFetch('/dashboard/stats')
-      .then(data => setStats(data))
-      .catch(err => setError(err.message || 'Failed to load dashboard data'))
+    Promise.all([
+      apiFetch('/dashboard/stats'),
+      getDailyStats().catch(() => ({ myCasesToday: 0, hospitalCasesToday: 0 }))
+    ])
+      .then(([data, daily]) => {
+        setStats(data);
+        setDailyStats(daily);
+      })
+      .catch(err => {
+        if (err.status === 403 && user && ROLE_REDIRECTS[user.role]) {
+          navigate(ROLE_REDIRECTS[user.role], { replace: true });
+          return;
+        }
+        setError(err.message || 'Failed to load dashboard data');
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -44,6 +57,8 @@ const Dashboard = () => {
   const cancerDistribution = stats.categoriesCount
     ? Object.entries(stats.categoriesCount).map(([name, value]) => ({ name: name.replace(/_/g, ' '), value, rawKey: name }))
     : [];
+  const scanDistribution = stats.scanTypeDistribution || [];
+  const totalScans = stats.scanStats?.total ?? 0;
 
   return (
     <div className="dashboard-container">
@@ -58,6 +73,13 @@ const Dashboard = () => {
           <div className="kpi-details">
             <span className="kpi-label">Total Patients</span>
             <span className="kpi-value">{stats.totalPatients ?? 0}</span>
+          </div>
+        </div>
+        <div className="kpi-card kpi-card--clickable" onClick={() => navigate('/scans')} title="View all scans">
+          <div className="kpi-icon purple"><BarChart3 size={24} /></div>
+          <div className="kpi-details">
+            <span className="kpi-label">Total Scans</span>
+            <span className="kpi-value">{totalScans}</span>
           </div>
         </div>
         <div className="kpi-card kpi-card--clickable" onClick={() => navigate('/patients?status=active')} title="View active cases">
@@ -76,9 +98,61 @@ const Dashboard = () => {
         </div>
       </div>
 
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ flex: 1, backgroundColor: '#fff', padding: '1rem 1.5rem', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '4px solid #7c3aed' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{t('dashboard.my_cases_today')}</h4>
+          <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#111827' }}>{dailyStats.myCasesToday}</div>
+        </div>
+        <div style={{ flex: 1, backgroundColor: '#fff', padding: '1rem 1.5rem', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '4px solid #10b981' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{t('dashboard.hospital_cases_today')}</h4>
+          <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#111827' }}>{dailyStats.hospitalCasesToday}</div>
+        </div>
+      </div>
+
       <div className="dashboard-content">
+        <div className="dashboard-charts">
         <div className="chart-card">
-          <h3>Scan Type Distribution <span className="chart-hint">click a slice to filter</span></h3>
+          <h3>Scans by Modality <span className="chart-hint">click a slice to open</span></h3>
+          {scanDistribution.length > 0 ? (
+            <div className="chart-container">
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={scanDistribution}
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    cursor="pointer"
+                    onClick={(entry) => navigate(entry.route || '/scans')}
+                  >
+                    {scanDistribution.map((entry, index) => (
+                      <Cell key={'scan-' + index} fill={entry.color || COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name) => [value, name]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="chart-legend">
+                {scanDistribution.map((entry, index) => (
+                  <div
+                    key={entry.key}
+                    className="legend-item legend-item--clickable"
+                    onClick={() => navigate(entry.route || '/scans')}
+                  >
+                    <span className="color-dot" style={{ background: entry.color || COLORS[index % COLORS.length] }} />
+                    {entry.label} ({entry.value})
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="empty-chart">No scan records yet</div>
+          )}
+        </div>
+
+        <div className="chart-card">
+          <h3>Visit Category Distribution <span className="chart-hint">click a slice to filter</span></h3>
           {cancerDistribution.length > 0 ? (
             <div className="chart-container">
               <ResponsiveContainer width="100%" height={300}>
@@ -115,6 +189,7 @@ const Dashboard = () => {
           ) : (
             <div className="empty-chart">No scan distribution data yet</div>
           )}
+        </div>
         </div>
 
         <div className="side-card">

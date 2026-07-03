@@ -248,6 +248,8 @@ const DynamicScanSheet = () => {
         setSuccess('Record created. Use the section buttons below to advance each stage.');
       } else {
         setSuccess(t('dyn.created'));
+        setFormData(emptyForm());
+        setSelectedPatient(null);
       }
       loadHistory(selectedPatient.id);
     } catch (err) {

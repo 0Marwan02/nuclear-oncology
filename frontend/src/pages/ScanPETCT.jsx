@@ -252,6 +252,7 @@ const ScanPETCT = () => {
         setSuccess('PET/CT record created — sent to nurse.');
         setFormData(emptyForm());
         setTumorMarkers([emptyMarker()]);
+        setSelectedPatient(null);
       }
       setHistoryLoading(true);
       getScanHistory('petct', selectedPatient.id)

@@ -298,8 +298,9 @@ const ScanThyroid = () => {
         admin.onCreated(result.id);
         setSuccess('Record created. Use the section buttons below to advance each stage.');
       } else {
-        setSuccess('Thyroid scan record created — sent to nurse.');
+        setSuccess('Thyroid Scan record created — sent to nurse.');
         setFormData(emptyForm());
+        setSelectedPatient(null);
       }
       fetchHistory();
     } catch (err) {

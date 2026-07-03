@@ -13,6 +13,21 @@ const withRoleClinical = (req, modelName, data) => ({
   ...filterBodyByRole(req.body, req.user?.role || 'guest', modelName),
 });
 
+const LOCKED_EDIT_MSG = 'This record is locked and can only be modified by a doctor or admin';
+
+const loadScanForUpdate = async (model, id, res, notFoundMsg, user) => {
+  const existing = await prisma[model].findUnique({ where: { id } });
+  if (!existing) {
+    res.status(404).json({ message: notFoundMsg });
+    return null;
+  }
+  if (existing.isLocked && user?.role !== 'admin' && user?.role !== 'doctor') {
+    res.status(403).json({ message: LOCKED_EDIT_MSG });
+    return null;
+  }
+  return existing;
+};
+
 // New scans may only enter the workflow at its start — never at a later
 // stage, which would skip the nurse/technician steps and the safety gates.
 const CREATE_STATUSES = new Set(['Pending_Doctor', 'Pending_Nurse']);
@@ -99,8 +114,8 @@ const updatePETCT = async (req, res) => {
   } = req.body;
 
   try {
-    const existing = await prisma.scanPETCT.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ message: 'PET-CT scan not found' });
+    const existing = await loadScanForUpdate('scanPETCT', req.params.id, res, 'PET-CT scan not found', req.user);
+    if (!existing) return;
 
     const fileUrl = req.file ? `/uploads/scans/${req.file.filename}` : existing.fileUrl;
 
@@ -237,8 +252,8 @@ const updatePSMAPETCT = async (req, res) => {
   } = req.body;
 
   try {
-    const existing = await prisma.scanPSMAPETCT.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ message: 'PSMA PET-CT scan not found' });
+    const existing = await loadScanForUpdate('scanPSMAPETCT', req.params.id, res, 'PSMA PET-CT scan not found', req.user);
+    if (!existing) return;
 
     const fileUrl = req.file ? `/uploads/scans/${req.file.filename}` : existing.fileUrl;
 
@@ -378,8 +393,8 @@ const updateThyroid = async (req, res) => {
   } = req.body;
 
   try {
-    const existing = await prisma.scanThyroid.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ message: 'Thyroid scan not found' });
+    const existing = await loadScanForUpdate('scanThyroid', req.params.id, res, 'Thyroid scan not found', req.user);
+    if (!existing) return;
 
     const fileUrl = req.file ? `/uploads/scans/${req.file.filename}` : existing.fileUrl;
 
@@ -522,8 +537,8 @@ const updateBone = async (req, res) => {
   } = req.body;
 
   try {
-    const existing = await prisma.scanBone.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ message: 'Bone scan not found' });
+    const existing = await loadScanForUpdate('scanBone', req.params.id, res, 'Bone scan not found', req.user);
+    if (!existing) return;
 
     const fileUrl = req.file ? `/uploads/scans/${req.file.filename}` : existing.fileUrl;
 
@@ -668,8 +683,8 @@ const updateRenal = async (req, res) => {
   } = req.body;
 
   try {
-    const existing = await prisma.scanRenal.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ message: 'Renal scan not found' });
+    const existing = await loadScanForUpdate('scanRenal', req.params.id, res, 'Renal scan not found', req.user);
+    if (!existing) return;
 
     const fileUrl = req.file ? `/uploads/scans/${req.file.filename}` : existing.fileUrl;
 
@@ -813,8 +828,8 @@ const updateGastric = async (req, res) => {
   } = req.body;
 
   try {
-    const existing = await prisma.scanGastric.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ message: 'Gastric scan not found' });
+    const existing = await loadScanForUpdate('scanGastric', req.params.id, res, 'Gastric scan not found', req.user);
+    if (!existing) return;
 
     const fileUrl = req.file ? `/uploads/scans/${req.file.filename}` : existing.fileUrl;
 
@@ -942,8 +957,9 @@ const getMeckel = async (req, res) => {
 const updateMeckel = async (req, res) => {
   const body = req.body;
   try {
-    const existing = await prisma.scanMeckel.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ message: 'Meckel scan not found' });
+    const existing = await loadScanForUpdate('scanMeckel', req.params.id, res, 'Meckel scan not found', req.user);
+    if (!existing) return;
+
     const fileUrl = req.file ? `/uploads/scans/${req.file.filename}` : existing.fileUrl;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -1073,8 +1089,8 @@ const getCardiac = async (req, res) => {
 
 const updateCardiac = async (req, res) => {
   try {
-    const existing = await prisma.scanCardiac.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ message: 'Cardiac scan not found' });
+    const existing = await loadScanForUpdate('scanCardiac', req.params.id, res, 'Cardiac scan not found', req.user);
+    if (!existing) return;
 
     const fileUrl = req.file ? `/uploads/scans/${req.file.filename}` : existing.fileUrl;
 
@@ -1156,10 +1172,15 @@ const getAllScansForPatient = async (req, res) => {
 
     // Dynamic (admin-defined) scans — tagged with their template key/name so the
     // history UI can group and label them like any other modality.
+    const dynamicInclude = {
+      patient: { select: { id: true, name: true, nationalId: true, gender: true, birthDate: true } },
+      performer: { select: { name: true, role: true } },
+      reporter: { select: { name: true, role: true } },
+    };
     const dynamicRows = await prisma.dynamicScan.findMany({
       where: { patientId },
       orderBy: { createdAt: 'desc' },
-      include: scanInclude,
+      include: dynamicInclude,
       take: 100,
     });
     let dynamicFlat = [];
@@ -1208,18 +1229,12 @@ const getScanStats = async (req, res) => {
     ]);
 
     const total = petct + psma + thyroid + bone + renal + gastric + meckel + cardiac + dynamic;
+    const byType = { petct, psma, thyroid, bone, renal, gastric, meckel, cardiac, dynamic };
 
     return res.json({
       total,
-      petct,
-      psma,
-      thyroid,
-      bone,
-      renal,
-      gastric,
-      meckel,
-      cardiac,
-      dynamic,
+      byType,
+      ...byType,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to get scan stats', error: error.message });

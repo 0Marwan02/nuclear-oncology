@@ -224,8 +224,9 @@ const ScanBone = () => {
         admin.onCreated(result.id);
         setSuccess('Record created. Use the section buttons below to advance each stage.');
       } else {
-        setSuccess('Bone scan record created — sent to nurse.');
+        setSuccess('Bone Scan record created — sent to nurse.');
         setFormData(emptyForm());
+        setSelectedPatient(null);
       }
       setHistoryLoading(true);
       getScanHistory('bone', selectedPatient.id)

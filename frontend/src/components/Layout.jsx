@@ -1,6 +1,6 @@
 import { Outlet, Navigate, NavLink, useNavigate } from 'react-router-dom';
 import { Home, Users, User, LogOut, ShieldCheck, Activity, Building, Stethoscope, Syringe, UserCheck, FileText, ChevronDown, ChevronRight, Scan, Search, KeyRound, Languages, Settings as SettingsIcon, LayoutTemplate } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from '../i18n/index';
 import './Layout.css';
 
@@ -8,8 +8,24 @@ const Layout = () => {
   const navigate = useNavigate();
   const { t, lang, setLang } = useTranslation();
   const [scansOpen, setScansOpen] = useState(false);
+  const [hasDashboardAccess, setHasDashboardAccess] = useState(false);
   const token = localStorage.getItem('auth_token');
   const userStr = localStorage.getItem('auth_user');
+
+  useEffect(() => {
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      if (u.role === 'admin') {
+        setHasDashboardAccess(true);
+      } else {
+        import('../utils/api').then(({ apiFetch }) => {
+          apiFetch('/dashboard/access')
+            .then(() => setHasDashboardAccess(true))
+            .catch(() => setHasDashboardAccess(false));
+        });
+      }
+    }
+  }, [userStr]);
 
   if (!token || !userStr) {
     return <Navigate to="/login" replace />;
@@ -40,10 +56,12 @@ const Layout = () => {
         </div>
 
         <nav className="sidebar-nav">
-          <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
-            <Home size={20} />
-            <span>{t('nav.dashboard')}</span>
-          </NavLink>
+          {hasDashboardAccess && (
+            <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
+              <Home size={20} />
+              <span>{t('nav.dashboard')}</span>
+            </NavLink>
+          )}
           <NavLink to="/patients" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <Users size={20} />
             <span>{t('nav.patients')}</span>

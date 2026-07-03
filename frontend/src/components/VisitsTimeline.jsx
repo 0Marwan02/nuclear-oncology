@@ -4,20 +4,33 @@ import { format } from 'date-fns';
 import { LabUploadModal, ImagingUploadModal, DoseModal } from './ResourceModals';
 import './VisitsTimeline.css';
 
-const VisitsTimeline = ({ visits, onVisitUpdated }) => {
-  if (!visits || visits.length === 0) {
-    return <div className="timeline-empty">No visits recorded yet.</div>;
+const VisitsTimeline = ({ visits, scans = [], onVisitUpdated }) => {
+  const allEvents = [
+    ...(visits || []).map(v => ({ ...v, _type: 'visit', _date: v.visitDate || v.createdAt })),
+    ...(scans || []).map(s => ({ ...s, _type: 'scan', _date: s.date || s.createdAt }))
+  ].sort((a, b) => new Date(b._date) - new Date(a._date));
+
+  if (allEvents.length === 0) {
+    return <div className="timeline-empty">No events recorded yet.</div>;
   }
 
   return (
     <div className="timeline-container">
-      {visits.map((visit, index) => (
-        <VisitItem 
-          key={visit.id} 
-          visit={visit} 
-          isLast={index === visits.length - 1} 
-          onUpdated={onVisitUpdated} 
-        />
+      {allEvents.map((event, index) => (
+        event._type === 'visit' ? (
+          <VisitItem 
+            key={`v-${event.id}`} 
+            visit={event} 
+            isLast={index === allEvents.length - 1} 
+            onUpdated={onVisitUpdated} 
+          />
+        ) : (
+          <ScanItem 
+            key={`s-${event.id}`} 
+            scan={event} 
+            isLast={index === allEvents.length - 1} 
+          />
+        )
       ))}
     </div>
   );
@@ -126,3 +139,40 @@ const VisitItem = ({ visit, isLast, onUpdated }) => {
 };
 
 export default VisitsTimeline;
+
+const TYPE_META = {
+  petct:   { label: 'PET/CT',    color: '#8b5cf6' },
+  psma:    { label: 'PSMA',      color: '#ec4899' },
+  thyroid: { label: 'Thyroid',   color: '#f59e0b' },
+  bone:    { label: 'Bone',      color: '#6b7280' },
+  renal:   { label: 'Renal',     color: '#3b82f6' },
+  gastric: { label: 'Gastric',   color: '#10b981' },
+  meckel:  { label: "Meckel's",  color: '#f97316' },
+  cardiac: { label: 'Cardiac',   color: '#ef4444' },
+};
+
+const ScanItem = ({ scan, isLast }) => {
+  const date = scan._date ? new Date(scan._date) : null;
+  const meta = TYPE_META[scan.scanType] || { label: scan.scanType, color: '#9ca3af' };
+  
+  return (
+    <div className="timeline-item">
+      <div className="timeline-marker">
+        <div className="timeline-dot" style={{ backgroundColor: meta.color }}></div>
+        {!isLast && <div className="timeline-line"></div>}
+      </div>
+      
+      <div className="timeline-content">
+        <div className="visit-summary" style={{ borderLeft: `3px solid ${meta.color}` }}>
+          <div className="visit-date-header" style={{ marginBottom: '8px' }}>
+            <span className="visit-date">{date ? format(date, 'MMM dd, yyyy - HH:mm') : '—'}</span>
+            <span style={{ backgroundColor: `${meta.color}20`, color: meta.color, padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>{meta.label}</span>
+          </div>
+          <div className="visit-brief">
+            {scan.impression ? `Impression: ${scan.impression}` : "No impression recorded yet."}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

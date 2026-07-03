@@ -9,6 +9,7 @@ import './PatientsList.css';
 const CATEGORY_LABELS = {
   PET_CT: 'PET/CT',
   PSMA_PET_CT: 'PSMA PET/CT',
+  CARDIAC: 'Cardiac (MPI)',
   GAMMA: 'GAMMA',
   OTHER: 'Other',
 };

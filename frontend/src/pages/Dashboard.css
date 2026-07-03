@@ -119,6 +119,12 @@
   gap: 24px;
 }
 
+.dashboard-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 @media (max-width: 900px) {
   .dashboard-content {
     grid-template-columns: 1fr;

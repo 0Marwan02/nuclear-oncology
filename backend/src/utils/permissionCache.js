@@ -31,6 +31,15 @@ const roleHasPermission = async (role, permKey) => {
 const requirePermission = (permKey) => async (req, res, next) => {
   if (req.user?.role === 'admin') return next();
   try {
+    if (req.user?.id) {
+      const override = await prisma.userPermission.findUnique({
+        where: { userId_permission: { userId: req.user.id, permission: permKey } }
+      });
+      if (override) {
+        if (override.granted) return next();
+        return res.status(403).json({ message: `Permission denied (revoked): ${permKey}` });
+      }
+    }
     const allowed = await roleHasPermission(req.user?.role, permKey);
     if (!allowed) return res.status(403).json({ message: `Permission denied: ${permKey}` });
     next();

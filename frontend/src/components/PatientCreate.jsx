@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 import { parseEgyptianNationalId } from '../utils/nationalIdParser';
-import { Activity, Pill, Scan, Bone, Droplet, Search, HelpCircle, ChevronDown } from 'lucide-react';
+import { Activity, Pill, Scan, HelpCircle, ChevronDown, HeartPulse } from 'lucide-react';
 import './PatientCreate.css';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 const SCAN_CATEGORIES = [
-  { key: 'PET_CT',      label: 'PET/CT',      sublabel: 'F-18 FDG',  icon: Activity, color: '#8b5cf6', path: '/scans/petct' },
-  { key: 'PSMA_PET_CT', label: 'PSMA PET/CT', sublabel: 'Ga-68 PSMA', icon: Pill,     color: '#ec4899', path: '/scans/psma' },
-  { key: 'GAMMA',       label: 'GAMMA',        sublabel: 'Tc-99m / I-131', icon: Scan, color: '#f59e0b', path: null },
-  { key: 'OTHER',       label: 'Other',        sublabel: 'Other scan type', icon: HelpCircle, color: '#6b7280', path: '/scans/petct' },
+  { key: 'PET_CT',      label: 'PET/CT',      sublabel: 'F-18 FDG',        icon: Activity,   color: '#8b5cf6', path: '/scans/petct' },
+  { key: 'PSMA_PET_CT', label: 'PSMA PET/CT', sublabel: 'Ga-68 PSMA',      icon: Pill,       color: '#ec4899', path: '/scans/psma' },
+  { key: 'CARDIAC',     label: 'Cardiac',      sublabel: 'MPI / Sestamibi', icon: HeartPulse, color: '#ef4444', path: '/scans/cardiac' },
+  { key: 'GAMMA',       label: 'GAMMA',        sublabel: 'Tc-99m / I-131',  icon: Scan,       color: '#f59e0b', path: null },
+  { key: 'OTHER',       label: 'Other',        sublabel: 'Other scan type',  icon: HelpCircle, color: '#6b7280', path: '/scans/petct' },
 ];
 
 const GAMMA_SUB = [
@@ -20,7 +21,6 @@ const GAMMA_SUB = [
   { key: 'Renal',    label: 'Renal',      path: '/scans/renal' },
   { key: 'Gastric',  label: 'Gastric',    path: '/scans/gastric' },
   { key: "Meckel",   label: "Meckel's",   path: '/scans/meckel' },
-  { key: 'Cardiac',  label: 'Cardiac',    path: '/scans/cardiac' },
   { key: 'Other',    label: 'Other',      path: '/scans/petct' },
 ];
 
@@ -39,6 +39,7 @@ const PatientCreate = ({ onPatientCreated, onCancel }) => {
 
   const [nationalIdStatus, setNationalIdStatus] = useState({ isValid: false, error: '' });
   const [calculatedAge, setCalculatedAge] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Step 3 state
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -76,11 +77,17 @@ const PatientCreate = ({ onPatientCreated, onCancel }) => {
   };
 
   const goNext = () => {
-    if (!formData.nationalId || !formData.name || !formData.birthDate || !formData.phone || !formData.address) {
-      setError('Please fill all required fields');
-      return;
-    }
+    const errors = {};
+    if (!formData.nationalId || formData.nationalId.length < 14) errors.nationalId = 'National ID must be 14 digits';
+    if (!formData.name.trim()) errors.name = 'Full name is required';
+    if (!formData.birthDate) errors.birthDate = 'Date of birth is required';
+    if (!formData.phone.trim()) errors.phone = 'Phone number is required';
+    else if (formData.phone.replace(/\D/g, '').length > 11) errors.phone = 'Phone must be at most 11 digits';
+    if (!formData.address.trim()) errors.address = 'Address is required';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setError('');
+    setFieldErrors({});
     setStep(s => s + 1);
   };
 
@@ -164,7 +171,9 @@ const PatientCreate = ({ onPatientCreated, onCancel }) => {
 
               <div className="form-group">
                 <label>Full Name <span className="req">*</span></label>
-                <input type="text" name="name" value={formData.name} onChange={handleChange} required placeholder="e.g. Ahmed Mohamed" />
+                <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="e.g. Ahmed Mohamed"
+                  className={fieldErrors.name ? 'invalid-input' : ''} />
+                {fieldErrors.name && <span className="field-error">{fieldErrors.name}</span>}
               </div>
 
               <div className="form-row">
@@ -186,26 +195,33 @@ const PatientCreate = ({ onPatientCreated, onCancel }) => {
               <div className="form-group">
                 <label>Date of Birth <span className="req">*</span></label>
                 <div className="date-input-row">
-                  <input type="date" name="birthDate" value={formData.birthDate} onChange={handleChange} required
-                    className={nationalIdStatus.isValid ? 'autofilled' : ''} />
+                  <input type="date" name="birthDate" value={formData.birthDate} onChange={handleChange}
+                    className={fieldErrors.birthDate ? 'invalid-input' : nationalIdStatus.isValid ? 'autofilled' : ''} />
                   {calculatedAge !== null && <span className="age-badge">{calculatedAge} سنة</span>}
                 </div>
+                {fieldErrors.birthDate && <span className="field-error">{fieldErrors.birthDate}</span>}
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Phone <span className="req">*</span></label>
-                  <input type="text" name="phone" value={formData.phone} onChange={handleChange} required placeholder="01012345678" />
+                  <input type="text" name="phone" value={formData.phone} onChange={handleChange}
+                    placeholder="01012345678" inputMode="numeric" maxLength={11}
+                    className={fieldErrors.phone ? 'invalid-input' : ''} />
+                  {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
                 </div>
                 <div className="form-group">
                   <label>تليفون قريب</label>
-                  <input type="text" name="phone2" value={formData.phone2} onChange={handleChange} />
+                  <input type="text" name="phone2" value={formData.phone2} onChange={handleChange} inputMode="numeric" maxLength={11} />
                 </div>
               </div>
 
               <div className="form-group">
                 <label>Address <span className="req">*</span></label>
-                <input type="text" name="address" value={formData.address} onChange={handleChange} required placeholder="e.g. 12 Tahrir St, Cairo" />
+                <input type="text" name="address" value={formData.address} onChange={handleChange}
+                  placeholder="e.g. 12 Tahrir St, Cairo"
+                  className={fieldErrors.address ? 'invalid-input' : ''} />
+                {fieldErrors.address && <span className="field-error">{fieldErrors.address}</span>}
               </div>
 
               <div className="form-row">

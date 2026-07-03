@@ -266,3 +266,8 @@
   color: #0369a1;
   margin-bottom: 12px;
 }
+
+
+.side-toggle { display: flex; gap: 8px; }
+.side-btn { padding: 8px 20px; border: 1.5px solid var(--border, #e2e8f0); border-radius: 8px; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.side-btn.active { background: var(--primary, #3b82f6); color: #fff; border-color: var(--primary, #3b82f6); }

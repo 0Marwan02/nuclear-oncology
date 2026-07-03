@@ -159,8 +159,9 @@ const ScanMeckel = () => {
         admin.onCreated(result.id);
         setSuccess('Record created. Use the section buttons below to advance each stage.');
       } else {
-        setSuccess('Meckel scan record created — sent to nurse.');
+        setSuccess('Meckel\'s scan record created — sent to nurse.');
         setFormData(emptyForm());
+        setSelectedPatient(null);
       }
       setHistoryLoading(true);
       getScanHistory('meckel', selectedPatient.id)

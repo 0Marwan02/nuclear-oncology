@@ -314,6 +314,7 @@ const ScanCardiac = () => {
       } else {
         setSuccess('Cardiac MPI record created — sent to nurse.');
         setFormData(emptyForm());
+        setSelectedPatient(null);
       }
       setHistoryLoading(true);
       getScanHistory('cardiac', selectedPatient.id)

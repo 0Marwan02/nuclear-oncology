@@ -1,10 +1,32 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, X, Clock, User, FileText, ArrowRight, Loader2 } from 'lucide-react';
+import { Search, X, Clock, User, FileText, ArrowRight, Loader2, Activity, Syringe, Pill, Bone, Droplets, UtensilsCrossed, HeartPulse, LayoutGrid } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 import './GlobalSearch.css';
 
 const RECENT_KEY = 'nuclear_oncology_recent_searches';
+
+const SCAN_QUICK_LINKS = [
+  { key: 'petct', label: 'PET/CT', labelAr: 'فحص PET/CT', path: '/scans/petct', icon: Activity, keywords: ['pet', 'fdg', 'petct', 'pet/ct'] },
+  { key: 'psma', label: 'PSMA PET/CT', labelAr: 'فحص PSMA', path: '/scans/psma', icon: Pill, keywords: ['psma', 'prostate', 'ga68'] },
+  { key: 'thyroid', label: 'Thyroid Scan', labelAr: 'فحص الغدة الدرقية', path: '/scans/thyroid', icon: Syringe, keywords: ['thyroid', 'wbs', 'درقية', 'يود'] },
+  { key: 'bone', label: 'Bone Scan', labelAr: 'فحص العظام', path: '/scans/bone', icon: Bone, keywords: ['bone', 'mdp', 'عظام'] },
+  { key: 'renal', label: 'Renal Scan', labelAr: 'فحص الكلى', path: '/scans/renal', icon: Droplets, keywords: ['renal', 'kidney', 'dtpa', 'mag3', 'كلى'] },
+  { key: 'gastric', label: 'Gastric Emptying', labelAr: 'فحص تفريغ المعدة', path: '/scans/gastric', icon: UtensilsCrossed, keywords: ['gastric', 'emptying', 'معدة'] },
+  { key: 'cardiac', label: 'Cardiac (MPI)', labelAr: 'فحص القلب', path: '/scans/cardiac', icon: HeartPulse, keywords: ['cardiac', 'heart', 'mpi', 'sestamibi', 'قلب', 'تروية'] },
+  { key: 'all', label: 'All Scans', labelAr: 'جميع الفحوصات', path: '/scans', icon: LayoutGrid, keywords: ['scan', 'scans', 'فحص', 'فحوصات'] },
+];
+
+const matchScanLinks = (term) => {
+  const q = term.trim().toLowerCase();
+  if (!q) return SCAN_QUICK_LINKS;
+  return SCAN_QUICK_LINKS.filter(
+    (link) =>
+      link.label.toLowerCase().includes(q) ||
+      link.labelAr.includes(term.trim()) ||
+      link.keywords.some((kw) => kw.includes(q) || q.includes(kw))
+  );
+};
 
 const GlobalSearch = () => {
   const [open, setOpen] = useState(false);
@@ -94,6 +116,12 @@ const GlobalSearch = () => {
     navigate(`/patients/${patient._id || patient.id}`);
   };
 
+  const handleScanLink = (path) => {
+    saveRecent(query || path);
+    setOpen(false);
+    navigate(path);
+  };
+
   const handleViewHistory = (e, patient) => {
     e.stopPropagation();
     saveRecent(query || patient.name);
@@ -115,6 +143,8 @@ const GlobalSearch = () => {
   };
 
   const allItems = query ? results : recent.map(r => ({ _recent: true, name: r }));
+  const scanLinks = matchScanLinks(query);
+  const showScanLinks = !loading && scanLinks.length > 0;
 
   return (
     <>
@@ -141,6 +171,28 @@ const GlobalSearch = () => {
         </div>
 
         <div className="global-search-results">
+          {showScanLinks && (
+            <>
+              <div className="global-search-section-header">
+                <LayoutGrid size={14} />
+                <span>{query ? 'فحوصات مطابقة' : 'اختصارات الفحوصات'}</span>
+              </div>
+              {scanLinks.map((link) => {
+                const Icon = link.icon;
+                return (
+                  <div
+                    key={link.key}
+                    className="global-search-item"
+                    onClick={() => handleScanLink(link.path)}
+                  >
+                    <Icon size={16} className="item-icon recent" />
+                    <span>{link.labelAr} · {link.label}</span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
           {!query && recent.length > 0 && (
             <>
               <div className="global-search-section-header">

@@ -26,6 +26,7 @@ const PERMISSION_CATALOG = [
   { key: 'admin:users',       label: 'Manage Users',        category: 'Administration', description: 'Create and block/unblock staff accounts' },
   { key: 'admin:logs',        label: 'View Audit Logs',     category: 'Administration', description: 'Access the full system audit trail' },
   { key: 'admin:permissions', label: 'Manage Permissions',  category: 'Administration', description: 'Grant and revoke role-level permissions' },
+  { key: 'admin:dashboard',   label: 'View Admin Dashboard',category: 'Administration', description: 'Access the main clinic statistics dashboard' },
   { key: 'scan_template:manage', label: 'Manage Scan Templates', category: 'Administration', description: 'Create, edit, and activate admin-defined dynamic scan sheets' },
 ];
 

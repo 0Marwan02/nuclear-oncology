@@ -414,6 +414,10 @@ const updateDynamicScan = async (req, res) => {
     const existing = await prisma.dynamicScan.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ message: 'Dynamic scan not found' });
 
+    if (existing.isLocked && role !== 'admin' && role !== 'doctor') {
+      return res.status(403).json({ message: 'This record is locked and can only be modified by a doctor or admin' });
+    }
+
     const template = await loadTemplateFor(existing.templateId);
     if (!template) return res.status(404).json({ message: 'Template not found' });
 

@@ -64,6 +64,10 @@ export const getScanStats = () => {
   return apiFetch('/scans/stats');
 };
 
+export const getDailyStats = () => {
+  return apiFetch('/dashboard/daily-stats');
+};
+
 export const advanceWorkflow = (type, id, payload) => {
   return apiFetch(`/workflow/${type}/${id}/advance`, {
     method: 'PUT',

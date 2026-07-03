@@ -1,6 +1,6 @@
 /**
  * seedDemo.js — Full demonstration data for Nuclear Oncology System
- * Covers: all 7 scan types, all workflow stages, all edge-case gates,
+ * Covers: all 8 scan types + dynamic templates, all workflow stages, all edge-case gates,
  *         all new form fields (HTN/DM, multiple markers, G-CSF notes, etc.)
  *
  * Run: node seedDemo.js
@@ -54,6 +54,11 @@ const PATIENTS = [
   { nationalId: '29507313501199', name: 'دينا وهبة',      gender: 'Female', birthDate: new Date('1995-07-31'), phone: '01011100019', bloodType: 'O+',  address: 'أسيوط — منفلوط',             scenario: 'gastric_gastroparesis' },
   // Meckel's patient
   { nationalId: '31008154601200', name: 'فريد يوسف',      gender: 'Male',   birthDate: new Date('2010-08-15'), phone: '01011100020', bloodType: 'B+',  address: 'أسيوط — القوصية',            scenario: 'meckel_bleeding' },
+  // Cardiac (MPI) patients
+  { nationalId: '29405123301201', name: 'إبراهيم سليم',   gender: 'Male',   birthDate: new Date('1964-05-12'), phone: '01011100021', bloodType: 'A+',  address: 'أسيوط — الفتح',              scenario: 'cardiac_stress_complete' },
+  { nationalId: '29109284401202', name: 'سها محمود',      gender: 'Female', birthDate: new Date('1969-09-28'), phone: '01011100022', bloodType: 'B+',  address: 'أسيوط — ساحل سليم',          scenario: 'cardiac_pending_report' },
+  // Dynamic scan (Lung Perfusion template)
+  { nationalId: '29006173501203', name: 'حمدي عوض',       gender: 'Male',   birthDate: new Date('1960-06-17'), phone: '01011100023', bloodType: 'O+',  address: 'أسيوط — أبو تيج',            scenario: 'lung_perfusion_dynamic' },
 ];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -97,9 +102,11 @@ async function main() {
   const existingPatientIds = existing.map(p => p.id);
   if (existingPatientIds.length > 0) {
     // Delete scan records first (FK constraint order)
-    for (const model of ['scanPETCT','scanPSMAPETCT','scanThyroid','scanBone','scanRenal','scanGastric','scanMeckel']) {
+    for (const model of ['scanPETCT','scanPSMAPETCT','scanThyroid','scanBone','scanRenal','scanGastric','scanMeckel','scanCardiac']) {
       await prisma[model].deleteMany({ where: { patientId: { in: existingPatientIds } } });
     }
+    await prisma.dynamicScan.deleteMany({ where: { patientId: { in: existingPatientIds } } });
+    await prisma.generatedReport.deleteMany({ where: { patientId: { in: existingPatientIds } } });
     await prisma.visit.deleteMany({ where: { patientId: { in: existingPatientIds } } });
     await prisma.patient.deleteMany({ where: { id: { in: existingPatientIds } } });
   }
@@ -137,7 +144,7 @@ async function main() {
     petAim: 'initial_staging',
     complaint: 'سعال دموي + ضيق تنفس',
     radioYn: false, chemoYn: false, gcsfGiven: false,
-    dmHistory: false, htnHistory: false, contrastAllergy: false,
+    dmHistory: false, hypertension: false, contrastAllergy: false,
     tumorMarkers: JSON.stringify([{ name: 'CEA', value: '18.4', physician: 'د. محمد عبدالرحمن' }]),
     urea: 28.0, creatinine: 0.9,
     renalFunctionDate: daysAgo(91),
@@ -167,7 +174,7 @@ async function main() {
     complaint: 'متابعة استجابة العلاج',
     chemoYn: true, chemoSessions: 4, lastChemoDate: daysAgo(50),
     radioYn: false, gcsfGiven: true, gcsfLastDate: daysAgo(52), gcsfNotes: 'G-CSF (Filgrastim 300mcg SC) بعد الكيماوي',
-    dmHistory: false, htnHistory: true, htnNotes: 'Amlodipine 5mg — ضغط متحكم فيه',
+    dmHistory: false, hypertension: true, hypertensionNote: 'Amlodipine 5mg — ضغط متحكم فيه',
     contrastAllergy: false,
     tumorMarkers: JSON.stringify([
       { name: 'CEA', value: '9.2', physician: 'د. محمد عبدالرحمن' },
@@ -200,14 +207,14 @@ async function main() {
     chemoYn: true, chemoSessions: 6, lastChemoDate: daysAgo(14),
     radioYn: true, radioSite: 'RT lung', lastRadiationDate: daysAgo(7),
     gcsfGiven: true, gcsfLastDate: daysAgo(10), gcsfNotes: 'Filgrastim 300mcg كل 2 يوم × 5 جرعات',
-    dmHistory: false, htnHistory: true, htnNotes: 'Amlodipine 5mg يومياً',
+    dmHistory: false, hypertension: true, hypertensionNote: 'Amlodipine 5mg يومياً',
     contrastAllergy: false,
     tumorMarkers: JSON.stringify([
       { name: 'CEA', value: '4.1', physician: 'د. محمد عبدالرحمن' },
       { name: 'CYFRA 21-1', value: '2.2', physician: 'د. محمد عبدالرحمن' },
       { name: 'NSE', value: '12.0', physician: 'د. محمد عبدالرحمن' },
     ]),
-    urea: 35.0, ureaNotes: 'طبيعي — مراقبة دورية', creatinine: 1.1, creatinineNotes: 'حدود طبيعة — CKD stage I',
+    urea: 35.0, ureaNote: 'طبيعي — مراقبة دورية', creatinine: 1.1, creatinineNote: 'حدود طبيعة — CKD stage I',
     renalFunctionDate: daysAgo(2),
     prevPetDate: daysAgo(45), prevPetFindings: 'Partial metabolic response after 4 cycles',
     ctMriYn: true, ctMriDate: daysAgo(10), ctMriFindings: 'RUL mass 1.8 × 1.3 cm — decreased',
@@ -234,8 +241,8 @@ async function main() {
     complaint: 'كتلة بالثدي الأيسر + ضخامة عقد إبطية',
     contraceptiveStatus: 'married', lmpDate: daysAgo(12),
     radioYn: false, chemoYn: false, gcsfGiven: false,
-    dmHistory: true, dmMedType: 'Pills', dmLastDoseDate: hoursAgo(2),
-    htnHistory: false, contrastAllergy: false,
+    dmHistory: true, dmMedicationType: 'Pills', dmLastDoseDate: hoursAgo(2),
+    hypertension: false, contrastAllergy: false,
     tumorMarkers: JSON.stringify([{ name: 'CA 15-3', value: '68.2', physician: 'د. محمد عبدالرحمن' }]),
     urea: 22.0, creatinine: 0.8, renalFunctionDate: daysAgo(3),
     prepWeight: 68, prepHeight: 162, prepBloodGlucose: 225,
@@ -258,7 +265,7 @@ async function main() {
     complaint: 'تضخم العقد اللمفاوية + إرهاق',
     contraceptiveStatus: '',  // ← EMPTY — triggers tech gate
     radioYn: false, chemoYn: false, gcsfGiven: false,
-    dmHistory: false, htnHistory: false, contrastAllergy: false,
+    dmHistory: false, hypertension: false, contrastAllergy: false,
     tumorMarkers: JSON.stringify([{ name: 'LDH', value: '780', physician: 'د. محمد عبدالرحمن' }]),
     urea: 26.0, creatinine: 0.85, renalFunctionDate: daysAgo(1),
     prepWeight: 58, prepHeight: 165, prepBloodGlucose: 86,
@@ -282,7 +289,7 @@ async function main() {
     contraceptiveStatus: 'married', lmpDate: daysAgo(22),
     chemoYn: true, chemoSessions: 3, lastChemoDate: daysAgo(21),
     radioYn: false, gcsfGiven: false,
-    dmHistory: false, htnHistory: false, contrastAllergy: false,
+    dmHistory: false, hypertension: false, contrastAllergy: false,
     tumorMarkers: JSON.stringify([
       { name: 'CA-125', value: '142.0', physician: 'د. محمد عبدالرحمن' },
       { name: 'HE4', value: '98.3', physician: 'د. محمد عبدالرحمن' },
@@ -320,22 +327,21 @@ async function main() {
   await prisma.scanPETCT.create({ data: {
     patientId: pid7, visitId: v7.id,
     diagnosis: 'Ca Lung (NSCLC Adenocarcinoma)',
-    petAim: 'resus', petAimResusSide: 'suspected hepatic metastasis — بعد ظهور ألم في الربع الأيمن العلوي',
+    petAim: 'resus', resusSide: 'suspected hepatic metastasis — بعد ظهور ألم في الربع الأيمن العلوي',
     complaint: 'ألم في الربع الأيمن العلوي + ضيق تنفس',
-    surgeryHistory: 'RT lower lobectomy 8 months ago', surgeryDate: daysAgo(240),
-    surgeryOthers: 'VATS approach — no complications',
+    surgeryHistory: 'RT lower lobectomy 8 months ago (240 days)', surgeryHistoryOther: 'VATS approach — no complications',
     radioYn: true, radioSite: 'RT chest wall', lastRadiationDate: daysAgo(90),
     chemoYn: true, chemoSessions: 4, lastChemoDate: daysAgo(45),
     gcsfGiven: true, gcsfLastDate: daysAgo(42), gcsfNotes: 'Pegfilgrastim 6mg SC × 1 dose post cycle 4',
     dmHistory: false,
-    htnHistory: true, htnNotes: 'Losartan 50mg + Amlodipine 5mg — ضغط متحكم فيه',
+    hypertension: true, hypertensionNote: 'Losartan 50mg + Amlodipine 5mg — ضغط متحكم فيه',
     contrastAllergy: false,
     tumorMarkers: JSON.stringify([
       { name: 'CEA', value: '28.5', physician: 'د. محمد عبدالرحمن' },
       { name: 'CYFRA 21-1', value: '7.9', physician: 'د. محمد عبدالرحمن' },
     ]),
-    urea: 48.0, ureaNotes: 'مرتفع قليلاً — مريض هيبوتنشن خفيف',
-    creatinine: 1.6, creatinineNotes: 'CKD Stage II — eGFR 58 mL/min — يحتاج متابعة قبل التباين',
+    urea: 48.0, ureaNote: 'مرتفع قليلاً — مريض هيبوتنشن خفيف',
+    creatinine: 1.6, creatinineNote: 'CKD Stage II — eGFR 58 mL/min — يحتاج متابعة قبل التباين',
     renalFunctionDate: daysAgo(3),
     prevPetDate: daysAgo(180), prevPetFindings: 'Complete metabolic response post lobectomy',
     ctMriYn: true, ctMriDate: daysAgo(14), ctMriFindings: 'New hepatic lesion 2.2cm segment VI + pleural effusion',
@@ -360,11 +366,11 @@ async function main() {
     surgeryHistory: 'TURP', surgeryDate: daysAgo(730),
     radioYn: true, radioSite: 'Pelvis', radioSessions: 35, radioLastSession: daysAgo(180),
     chemoYn: false, gcsfGiven: false,
-    htnHistory: true, htnNotes: 'Ramipril 5mg',
+    hypertension: true, hypertensionNote: 'Ramipril 5mg',
     dmHistory: false, contrastAllergy: false,
     urea: 30.0, creatinine: 1.0, renalFunctionDate: daysAgo(93),
-    prevPsmaDate: null, prevPsmaSite: null,
-    ctMriYn: true, ctMriDate: daysAgo(95), ctMriSite: 'Pelvic nodes suspicious',
+    prevPsmaDate: null, prevPsmaFindings: null,
+    ctMriYn: true, ctMriDate: daysAgo(95), ctMriFindings: 'Pelvic nodes suspicious',
     prepWeight: 80, prepHeight: 170, prepBloodGlucose: 94,
     injectionSite: 'RT hand',
     ga68DoseMCi: 4.0,
@@ -387,12 +393,12 @@ async function main() {
     surgeryHistory: 'TURP', surgeryDate: daysAgo(730),
     radioYn: true, radioSite: 'Pelvis', radioSessions: 35, radioLastSession: daysAgo(180),
     chemoYn: false, gcsfGiven: false,
-    htnHistory: true, htnNotes: 'Ramipril 5mg — ضغط طبيعي',
+    hypertension: true, hypertensionNote: 'Ramipril 5mg — ضغط طبيعي',
     dmHistory: false, contrastAllergy: false,
     tumorMarkers: JSON.stringify([{ name: 'ALP', value: '145', physician: 'د. محمد عبدالرحمن' }]),
     urea: 34.0, creatinine: 1.1, renalFunctionDate: daysAgo(8),
-    prevPsmaDate: daysAgo(90), prevPsmaSite: 'Prostate bed + pelvic nodes',
-    ctMriYn: true, ctMriDate: daysAgo(14), ctMriSite: 'T8 vertebral sclerotic lesion — new',
+    prevPsmaDate: daysAgo(90), prevPsmaFindings: 'Prostate bed + pelvic nodes',
+    ctMriYn: true, ctMriDate: daysAgo(14), ctMriFindings: 'T8 vertebral sclerotic lesion — new',
     prepWeight: 82, prepHeight: 170, prepBloodGlucose: 97,
     injectionSite: 'RT hand',
     ga68DoseMCi: 4.5,
@@ -418,7 +424,7 @@ async function main() {
     psaTestDate: daysAgo(121), totalPSA: 3.2, freePSA: 0.38, gleasonScore: '3+4=7',
     surgeryHistory: 'Radical prostatectomy', surgeryDate: daysAgo(365),
     radioYn: false, chemoYn: false, gcsfGiven: false,
-    htnHistory: false, dmHistory: false, contrastAllergy: false,
+    hypertension: false, dmHistory: false, contrastAllergy: false,
     urea: 28.0, creatinine: 0.95, renalFunctionDate: daysAgo(122),
     ctMriYn: false,
     prepWeight: 78, prepHeight: 175, prepBloodGlucose: 85,
@@ -441,10 +447,10 @@ async function main() {
     psaTestDate: daysAgo(5), totalPSA: 0.8, freePSA: 0.09, gleasonScore: '3+4=7',
     surgeryHistory: 'Radical prostatectomy', surgeryDate: daysAgo(365),
     radioYn: false, chemoYn: false, gcsfGiven: false,
-    htnHistory: false, dmHistory: false, contrastAllergy: false,
+    hypertension: false, dmHistory: false, contrastAllergy: false,
     tumorMarkers: JSON.stringify([{ name: 'ALP', value: '82', physician: 'د. محمد عبدالرحمن' }]),
     urea: 29.0, creatinine: 0.92, renalFunctionDate: daysAgo(6),
-    prevPsmaDate: daysAgo(120), prevPsmaSite: 'Focal prostate bed recurrence',
+    prevPsmaDate: daysAgo(120), prevPsmaFindings: 'Focal prostate bed recurrence',
     ctMriYn: false,
     prepWeight: 77, prepHeight: 175, prepBloodGlucose: 89,
     injectionSite: 'RT hand',
@@ -466,17 +472,17 @@ async function main() {
     surgeryHistory: 'Bilateral orchiectomy', surgeryDate: daysAgo(548),
     radioYn: false, chemoYn: true, chemoSessions: 6, chemoLastCycle: daysAgo(30),
     gcsfGiven: true, gcsfLastDate: daysAgo(28), gcsfNotes: 'Filgrastim 300mcg × 5 days',
-    htnHistory: true, htnNotes: 'Lisinopril 10mg + Bisoprolol 2.5mg',
-    dmHistory: true, dmMedType: 'Insulin', dmLastDoseDate: hoursAgo(14),
+    hypertension: true, hypertensionNote: 'Lisinopril 10mg + Bisoprolol 2.5mg',
+    dmHistory: true, dmMedicationType: 'Insulin', dmLastDoseDate: hoursAgo(14),
     contrastAllergy: false,
     tumorMarkers: JSON.stringify([
       { name: 'ALP', value: '312', physician: 'د. محمد عبدالرحمن' },
       { name: 'LDH', value: '580', physician: 'د. محمد عبدالرحمن' },
     ]),
-    urea: 42.0, ureaNotes: 'مرتفع — CKD background',
-    creatinine: 1.45, creatinineNotes: 'CKD Stage II — eGFR 62',
+    urea: 42.0, ureaNote: 'مرتفع — CKD background',
+    creatinine: 1.45, creatinineNote: 'CKD Stage II — eGFR 62',
     renalFunctionDate: daysAgo(3),
-    ctMriYn: true, ctMriDate: daysAgo(20), ctMriSite: 'Multiple bone mets (T4, L2, L5, ribs) + hepatic deposits (2)',
+    ctMriYn: true, ctMriDate: daysAgo(20), ctMriFindings: 'Multiple bone mets (T4, L2, L5, ribs) + hepatic deposits (2)',
     prepWeight: 72, prepHeight: 165, prepBloodGlucose: 138,
     injectionSite: 'LT forearm',
     ga68DoseMCi: 4.5,
@@ -570,7 +576,7 @@ async function main() {
   const v15 = await mkVisit(pid15, 'GAMMA', 'Bone', 'Completed', doc3, { daysAgo: 60 });
   await prisma.scanBone.create({ data: {
     patientId: pid15, visitId: v15.id,
-    indication: 'Prostate cancer bone metastasis surveillance',
+    complaint: 'Prostate cancer bone metastasis surveillance',
     diagnosis: 'Metastatic prostate cancer',
     complaint: 'ألم عظام منتشر',
     prepWeight: 76, prepHeight: 168, prepBloodGlucose: 92,
@@ -587,9 +593,8 @@ async function main() {
   const v16 = await mkVisit(pid16, 'GAMMA', 'Bone', 'Pending_Technical', nur1, { daysAgo: 0 });
   await prisma.scanBone.create({ data: {
     patientId: pid16, visitId: v16.id,
-    indication: 'Breast cancer bone surveillance — annual',
+    complaint: 'Breast cancer bone surveillance — annual — متابعة دورية سنوية',
     diagnosis: 'Ca Breast (Stage II, ER+/PR+/HER2-) on hormonal therapy',
-    complaint: 'متابعة دورية سنوية',
     prepWeight: 65, prepHeight: 162, prepBloodGlucose: 88,
     injectionSite: 'LT hand',
     workflowStatus: 'Pending_Technical', performedBy: doc3,
@@ -603,9 +608,8 @@ async function main() {
   const v17 = await mkVisit(pid17, 'GAMMA', 'Renal', 'Pending_Report', doc3, { daysAgo: 0 });
   await prisma.scanRenal.create({ data: {
     patientId: pid17, visitId: v17.id,
-    indication: 'Renovascular hypertension evaluation',
+    complaint: 'Renovascular hypertension evaluation — ارتفاع ضغط صعب في السيطرة',
     diagnosis: 'Suspected LT renal artery stenosis',
-    complaint: 'ارتفاع ضغط صعب في السيطرة',
     prepWeight: 82, prepHeight: 173, prepBloodGlucose: 104,
     injectionSite: 'RT hand',
     workflowStatus: 'Pending_Report', performedBy: tec1,
@@ -619,9 +623,8 @@ async function main() {
   const v18 = await mkVisit(pid18, 'GAMMA', 'Renal', 'Completed', doc3, { daysAgo: 45 });
   await prisma.scanRenal.create({ data: {
     patientId: pid18, visitId: v18.id,
-    indication: 'Post-renal transplant function assessment',
+    complaint: 'Post-renal transplant function assessment — ارتفاع في الكرياتينين',
     diagnosis: 'Renal transplant in LIF — 8 months post-op',
-    complaint: 'ارتفاع في الكرياتينين',
     prepWeight: 74, prepHeight: 170, prepBloodGlucose: 98,
     injectionSite: 'RT hand',
     impression: 'Mildly delayed perfusion phase. Functioning renal transplant with mild acute rejection pattern — correlate clinically.',
@@ -643,19 +646,133 @@ async function main() {
   const v20 = await mkVisit(pid20, 'GAMMA', 'Gastric', 'Pending_Nurse', doc2, { daysAgo: 0 });
   await prisma.scanMeckel.create({ data: {
     patientId: pid20, visitId: v20.id,
-    indication: 'Lower GI bleeding — rule out Meckel\'s diverticulum',
+    complaint: 'Lower GI bleeding — rule out Meckel\'s diverticulum — نزيف مستقيمي متكرر بدون ألم (14 سنة)',
     diagnosis: 'Suspected Meckel\'s diverticulum',
-    complaint: 'نزيف مستقيمي متكرر بدون ألم (14 سنة)',
     prepWeight: 52, prepHeight: 158, prepBloodGlucose: 82,
     injectionSite: 'LT hand',
     workflowStatus: 'Pending_Nurse', performedBy: doc2,
   }});
   console.log('  ✅ فريد يوسف (Meckel\'s Pending_Nurse — pediatric GI bleed)');
 
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 21: إبراهيم سليم — Cardiac MPI completed (treadmill stress + locked)
+  // ────────────────────────────────────────────────────────────
+  const pid21 = patMap['cardiac_stress_complete'];
+  const v21 = await mkVisit(pid21, 'GAMMA', 'Cardiac', 'Completed', doc1, { daysAgo: 30 });
+  await prisma.scanCardiac.create({ data: {
+    patientId: pid21, visitId: v21.id,
+    diagnosis: 'Suspected CAD — exertional chest pain',
+    chestPain: true, chestPainCharacter: 'compressing', chestPainOnset: 'gradual',
+    chestPainDuration: 'minutes', precipitatedBy: JSON.stringify(['exercise']),
+    relievedBy: JSON.stringify(['rest']),
+    smoking: true, htn: true, dm: true, hyperlipidemia: true,
+    angina: true, cabg: false, ptca: false,
+    ecgFindings: 'NSR — no acute ST changes',
+    echoFindings: 'LVEF 55% — no wall motion abnormality at rest',
+    cardiacEnzymes: 'Troponin I negative',
+    prepWeight: 88, prepHeight: 172, prepBloodGlucose: 112,
+    injectionSite: 'RT hand',
+    scanMode: JSON.stringify(['rest', 'stress']),
+    treadmillExercise: true, thrBpm: 142, mets: 8.5,
+    exerciseDurationMin: 7, exerciseDurationSec: 30,
+    reasonEndingExercise: 'Target HR achieved',
+    vitalsTable: JSON.stringify([
+      { label: 'Before Rest', time: '09:00', pulse: '72', bp: '130/80', ecg: 'NSR', notes: '' },
+      { label: 'Before stress', time: '09:15', pulse: '88', bp: '145/85', ecg: 'NSR', notes: '' },
+      { label: 'During stress', time: '09:22', pulse: '142', bp: '180/90', ecg: 'NSR', notes: 'No chest pain' },
+      { label: 'After stress', time: '09:30', pulse: '95', bp: '140/82', ecg: 'NSR', notes: '' },
+      { label: 'Before Discharge', time: '10:00', pulse: '74', bp: '128/78', ecg: 'NSR', notes: 'Stable' },
+    ]),
+    tracer: 'Tc-99m Sestamibi', tracerDoseMCi: 25.0,
+    injectionSiteSide: 'RT', injectionSiteLimb: 'hand',
+    injectionTime: daysAgo(30), acquisitionTime: daysAgo(30),
+    technicianPhysicist: 'عمرو حسن',
+    impression: 'Reversible perfusion defect in inferolateral wall — consistent with ischemia. Recommend coronary angiography.',
+    workflowStatus: 'Completed', isLocked: true,
+    performedBy: tec1, reportedBy: doc1,
+  }});
+  console.log('  ✅ إبراهيم سليم (Cardiac MPI completed — treadmill stress, locked)');
+
+  // ────────────────────────────────────────────────────────────
+  // SCENARIO 22: سها محمود — Cardiac MPI Pending_Report (multi scan-mode)
+  // ────────────────────────────────────────────────────────────
+  const pid22 = patMap['cardiac_pending_report'];
+  const v22 = await mkVisit(pid22, 'GAMMA', 'Cardiac', 'Pending_Report', doc2, { daysAgo: 0 });
+  await prisma.scanCardiac.create({ data: {
+    patientId: pid22, visitId: v22.id,
+    diagnosis: 'Atypical chest pain — rule out ischemia',
+    chestPain: true, chestPainCharacter: 'pricking', chestPainOnset: 'sudden',
+    htn: true, dm: false, familyHx: true,
+    contraceptiveStatus: 'postmenopausal',
+    ecgFindings: 'NSR — T-wave flattening V4-V6',
+    echoFindings: 'LVEF 60% — normal wall motion',
+    prepWeight: 70, prepHeight: 160, prepBloodGlucose: 98,
+    injectionSite: 'LT hand',
+    scanMode: JSON.stringify(['rest', 'stress', 'delayed']),
+    treadmillExercise: true, thrBpm: 138, mets: 7.2,
+    exerciseDurationMin: 6, exerciseDurationSec: 45,
+    tracer: 'Tc-99m Sestamibi', tracerDoseMCi: 22.0,
+    injectionSiteSide: 'LT', injectionSiteLimb: 'hand',
+    injectionTime: hoursAgo(4), acquisitionTime: hoursAgo(3),
+    workflowStatus: 'Pending_Report',
+    performedBy: tec1,
+  }});
+  console.log('  ✅ سها محمود (Cardiac MPI Pending_Report — multi scan-mode)');
+
+  // ── DEMO DYNAMIC TEMPLATE (Lung Perfusion) + SCENARIO 23 ──
+  console.log('\n📐 Seeding demo dynamic template (Lung Perfusion)...');
+  const DEMO_TEMPLATE_KEY = 'lung_perfusion';
+  let demoTpl = await prisma.scanTemplate.findUnique({ where: { key: DEMO_TEMPLATE_KEY } });
+  if (demoTpl) {
+    await prisma.dynamicScan.deleteMany({ where: { templateId: demoTpl.id } });
+    await prisma.scanTemplateField.deleteMany({ where: { templateId: demoTpl.id } });
+    await prisma.scanTemplate.delete({ where: { id: demoTpl.id } });
+  }
+  demoTpl = await prisma.scanTemplate.create({
+    data: {
+      key: DEMO_TEMPLATE_KEY,
+      name: 'Lung Perfusion Scan',
+      nameAr: 'فحص تروية الرئة',
+      category: 'Ventilation/Perfusion',
+      icon: 'Wind',
+      color: '#6366f1',
+      isActive: true,
+      createdBy: admin,
+      fields: {
+        create: [
+          { section: 'doctor', key: 'indication', label: 'Indication', labelAr: 'المؤشر', type: 'textarea', required: true, order: 0 },
+          { section: 'doctor', key: 'diagnosis', label: 'Diagnosis', labelAr: 'التشخيص', type: 'text', required: false, order: 1 },
+          { section: 'nurse', key: 'prepWeight', label: 'Weight (kg)', labelAr: 'الوزن', type: 'number', unit: 'kg', order: 0 },
+          { section: 'nurse', key: 'prepBloodGlucose', label: 'Blood Glucose', labelAr: 'سكر الدم', type: 'number', unit: 'mg/dL', order: 1 },
+          { section: 'tech', key: 'tracerDose', label: 'Tracer Dose', labelAr: 'جرعة المتتبع', type: 'number', unit: 'mCi', order: 0 },
+          { section: 'results', key: 'perfusionDefect', label: 'Perfusion Defect', labelAr: 'عيب التروية', type: 'textarea', order: 0 },
+        ],
+      },
+    },
+  });
+  console.log('  ✅ Lung Perfusion template (lung_perfusion)');
+
+  const pid23 = patMap['lung_perfusion_dynamic'];
+  const v23 = await mkVisit(pid23, 'OTHER', null, 'Pending_Nurse', doc1, { daysAgo: 0 });
+  await prisma.dynamicScan.create({
+    data: {
+      templateId: demoTpl.id,
+      patientId: pid23,
+      visitId: v23.id,
+      data: JSON.stringify({
+        indication: 'Suspected PE — dyspnea + elevated D-dimer (980 ng/mL)',
+        diagnosis: 'Rule out pulmonary embolism',
+      }),
+      performedBy: doc1,
+      workflowStatus: 'Pending_Nurse',
+    },
+  });
+  console.log('  ✅ حمدي عوض (Dynamic Lung Perfusion — Pending_Nurse)');
+
   console.log('\n✅ All demo data seeded successfully!\n');
   console.log('  Users:    9  (8 active + 1 blocked)');
-  console.log('  Patients: 20 (all scenarios covered)');
-  console.log('  Scans:    30 records across 7 scan types + all workflow stages');
+  console.log('  Patients: 23 (all scenarios covered)');
+  console.log('  Scans:    33 records across 8 scan types + 1 dynamic + all workflow stages');
   console.log('\n  Run: node seedDemo.js (idempotent — safe to re-run)\n');
 }
 

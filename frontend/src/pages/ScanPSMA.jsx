@@ -239,6 +239,7 @@ const ScanPSMA = () => {
         setSuccess('PSMA PET/CT record created — sent to nurse.');
         setFormData(emptyForm());
         setTumorMarkers([emptyMarker()]);
+        setSelectedPatient(null);
       }
       setHistoryLoading(true);
       getScanHistory('psma', selectedPatient.id)

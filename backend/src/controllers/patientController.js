@@ -77,11 +77,52 @@ const listPatients = async (req, res) => {
     }
 
     if (status === 'active') {
-      conditions.push({ visits: { some: { workflowStatus: { not: 'Completed' } } } });
+      const activeWf = { workflowStatus: { notIn: ['Completed'] } };
+      conditions.push({
+        OR: [
+          { visits: { some: { workflowStatus: { not: 'Completed' } } } },
+          { scanPETCTs: { some: activeWf } },
+          { scanPSMAPETCTs: { some: activeWf } },
+          { scanThyroids: { some: activeWf } },
+          { scanBones: { some: activeWf } },
+          { scanRenals: { some: activeWf } },
+          { scanGastrics: { some: activeWf } },
+          { scanMeckels: { some: activeWf } },
+          { scanCardiacs: { some: activeWf } },
+          { dynamicScans: { some: activeWf } },
+        ]
+      });
     } else if (status === 'completed') {
-      // patients who have at least one completed visit AND no active visits
-      conditions.push({ visits: { some: { workflowStatus: 'Completed' } } });
-      conditions.push({ visits: { none: { workflowStatus: { not: 'Completed' } } } });
+      const completedWf = { workflowStatus: 'Completed' };
+      const activeWf = { workflowStatus: { notIn: ['Completed'] } };
+      conditions.push({
+        OR: [
+          { visits: { some: { workflowStatus: 'Completed' } } },
+          { scanPETCTs: { some: completedWf } },
+          { scanPSMAPETCTs: { some: completedWf } },
+          { scanThyroids: { some: completedWf } },
+          { scanBones: { some: completedWf } },
+          { scanRenals: { some: completedWf } },
+          { scanGastrics: { some: completedWf } },
+          { scanMeckels: { some: completedWf } },
+          { scanCardiacs: { some: completedWf } },
+          { dynamicScans: { some: completedWf } },
+        ]
+      });
+      conditions.push({
+        AND: [
+          { visits: { none: { workflowStatus: { not: 'Completed' } } } },
+          { scanPETCTs: { none: activeWf } },
+          { scanPSMAPETCTs: { none: activeWf } },
+          { scanThyroids: { none: activeWf } },
+          { scanBones: { none: activeWf } },
+          { scanRenals: { none: activeWf } },
+          { scanGastrics: { none: activeWf } },
+          { scanMeckels: { none: activeWf } },
+          { scanCardiacs: { none: activeWf } },
+          { dynamicScans: { none: activeWf } },
+        ]
+      });
     }
 
     const where = conditions.length > 0 ? { AND: conditions } : {};
@@ -117,7 +158,15 @@ const getPatientById = async (req, res) => {
             scanPETCTs: true, scanPSMAPETCTs: true, scanThyroids: true,
             scanBones: true, scanRenals: true, scanGastrics: true, scanMeckels: true
           }
-        }
+        },
+        scanPETCTs: { take: 20, orderBy: { createdAt: 'desc' } },
+        scanPSMAPETCTs: { take: 20, orderBy: { createdAt: 'desc' } },
+        scanThyroids: { take: 20, orderBy: { createdAt: 'desc' } },
+        scanBones: { take: 20, orderBy: { createdAt: 'desc' } },
+        scanRenals: { take: 20, orderBy: { createdAt: 'desc' } },
+        scanGastrics: { take: 20, orderBy: { createdAt: 'desc' } },
+        scanMeckels: { take: 20, orderBy: { createdAt: 'desc' } },
+        scanCardiacs: { take: 20, orderBy: { createdAt: 'desc' } },
       }
     });
 

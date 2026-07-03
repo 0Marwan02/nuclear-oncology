@@ -263,3 +263,11 @@
 .modal-card .admin-form {
   padding: 20px 24px 24px;
 }
+
+.log-detail-modal { max-width: 560px; width: 90vw; max-height: 80vh; overflow-y: auto; }
+.log-kv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.log-kv-table tr { border-bottom: 1px solid var(--border, #e2e8f0); }
+.log-kv-key { padding: 5px 10px 5px 0; font-weight: 600; white-space: nowrap; color: var(--text-muted, #64748b); width: 40%; vertical-align: top; }
+.log-kv-val { padding: 5px 0; word-break: break-all; }
+.field-error { display: block; color: #ef4444; font-size: 12px; margin-top: 3px; }
+.invalid-input { border-color: #ef4444 !important; }

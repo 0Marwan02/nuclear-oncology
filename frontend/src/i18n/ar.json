@@ -112,6 +112,8 @@
   "dashboard.total_patients": "إجمالي المرضى",
   "dashboard.today_visits": "زيارات اليوم",
   "dashboard.active_cases": "الحالات النشطة",
+  "dashboard.my_cases_today": "حالاتي المنجزة اليوم",
+  "dashboard.hospital_cases_today": "إجمالي حالات المستشفى اليوم",
   "dashboard.recent_patients": "المرضى الأخيرون",
   "dashboard.quick_stats": "إحصائيات سريعة",
   "dashboard.workflow_summary": "ملخص سير العمل",

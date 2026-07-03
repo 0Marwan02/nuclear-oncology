@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getWorkflowAll, advanceWorkflow } from '../utils/api';
+import { getWorkflowAll, advanceWorkflow, getDailyStats } from '../utils/api';
 import { useQueueSocket } from '../utils/socket';
 import { useTranslation } from '../i18n/index';
 import WorkflowProgress from '../components/WorkflowProgress';
@@ -8,13 +8,16 @@ import { format } from 'date-fns';
 import './NurseDashboard.css';
 
 const emptyPrep = {
-  weight: '', height: '', bloodSugar: '', injectionSite: '', cannulaSize: '', nurseNotes: '', pregnancyStatus: '',
+  weight: '', height: '', bloodSugar: '',
+  injectionSiteLimb: '', injectionSiteSide: '', injectionSiteCustom: '',
+  nurseNotes: '', pregnancyStatus: '',
 };
 
 const NurseDashboard = () => {
   const { t } = useTranslation();
   const [registeredVisits, setRegisteredVisits] = useState([]);
   const [preparedToday, setPreparedToday] = useState([]);
+  const [dailyStats, setDailyStats] = useState({ myCasesToday: 0, hospitalCasesToday: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState(null);
@@ -24,9 +27,13 @@ const NurseDashboard = () => {
 
   const fetchRegistered = useCallback(async () => {
     try {
-      const records = await getWorkflowAll({ status: 'Pending_Nurse' });
+      const [records, stats] = await Promise.all([
+        getWorkflowAll({ status: 'Pending_Nurse' }),
+        getDailyStats()
+      ]);
       records.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       setRegisteredVisits(records.map((r) => ({ ...r, _scanType: r.scanType })));
+      setDailyStats(stats);
     } catch (err) {
       setError(err.message || t('nurse.load_failed'));
     } finally {
@@ -46,12 +53,20 @@ const NurseDashboard = () => {
     setError('');
     setSuccessMsg('');
     try {
+      const { injectionSiteLimb, injectionSiteSide, injectionSiteCustom, ...restPrep } = prepForm;
+      const injectionSite = injectionSiteLimb === 'Other'
+        ? (injectionSiteCustom || 'Other')
+        : [injectionSiteSide, injectionSiteLimb].filter(Boolean).join(' ');
       await advanceWorkflow(visit._scanType || visit.scanType, visit.id, {
         workflowStatus: 'Pending_Technical',
-        prep: { ...prepForm },
+        prep: { ...restPrep, injectionSite },
       });
       setRegisteredVisits(prev => prev.filter(v => v.id !== visit.id));
       setPreparedToday(prev => [...prev, visit]);
+      setDailyStats(prev => ({ 
+        myCasesToday: prev.myCasesToday + 1, 
+        hospitalCasesToday: prev.hospitalCasesToday + 1 
+      }));
       setExpandedId(null);
       setPrepForm(emptyPrep);
       setSuccessMsg(t('nurse.prep_saved'));
@@ -77,6 +92,17 @@ const NurseDashboard = () => {
           <p className="text-muted">{t('nurse.subtitle')}</p>
         </div>
         <div className="status-badge registered">{registeredVisits.length} {t('nurse.waiting')}</div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ flex: 1, backgroundColor: '#fff', padding: '1rem 1.5rem', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '4px solid #7c3aed' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{t('dashboard.my_cases_today')}</h4>
+          <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#111827' }}>{dailyStats.myCasesToday}</div>
+        </div>
+        <div style={{ flex: 1, backgroundColor: '#fff', padding: '1rem 1.5rem', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '4px solid #10b981' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{t('dashboard.hospital_cases_today')}</h4>
+          <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#111827' }}>{dailyStats.hospitalCasesToday}</div>
+        </div>
       </div>
 
       {successMsg && <div className="success-banner">{successMsg}</div>}
@@ -147,26 +173,44 @@ const NurseDashboard = () => {
                                 <input type="number" inputMode="decimal" name="bloodSugar" value={prepForm.bloodSugar} onChange={handlePrepChange} placeholder="mg/dL" min="0" className="touch-input" />
                               </div>
                               <div className="form-group">
-                                <label>{t('nurse.injection_site')}</label>
-                                <select name="injectionSite" value={prepForm.injectionSite} onChange={handlePrepChange} className="touch-input">
-                                  <option value="">{t('nurse.choose')}</option>
-                                  <option value="right_arm">{t('nurse.right_arm')}</option>
-                                  <option value="left_arm">{t('nurse.left_arm')}</option>
-                                  <option value="hand">{t('nurse.hand')}</option>
-                                  <option value="foot">{t('nurse.foot')}</option>
+                                <label>Body Part</label>
+                                <select name="injectionSiteLimb" value={prepForm.injectionSiteLimb} onChange={handlePrepChange} className="touch-input">
+                                  <option value="">— Select —</option>
+                                  <option value="Hand">Hand</option>
+                                  <option value="Wrist">Wrist</option>
+                                  <option value="Forearm">Forearm</option>
+                                  <option value="Arm">Arm</option>
+                                  <option value="Leg">Leg</option>
+                                  <option value="Foot">Foot</option>
+                                  <option value="Other">Other</option>
                                 </select>
                               </div>
                             </div>
                             <div className="form-row-2">
                               <div className="form-group">
-                                <label>{t('nurse.cannula_size')}</label>
-                                <input name="cannulaSize" value={prepForm.cannulaSize} onChange={handlePrepChange} placeholder="20G" className="touch-input" />
+                                <label>Side</label>
+                                <div className="side-toggle">
+                                  {['Right', 'Left'].map(side => (
+                                    <button
+                                      key={side}
+                                      type="button"
+                                      className={`side-btn${prepForm.injectionSiteSide === side ? ' active' : ''}`}
+                                      onClick={() => setPrepForm(prev => ({ ...prev, injectionSiteSide: side }))}
+                                    >{side}</button>
+                                  ))}
+                                </div>
                               </div>
                               <div className="form-group">
                                 <label>{t('nurse.pregnancy_status')}</label>
                                 <input name="pregnancyStatus" value={prepForm.pregnancyStatus} onChange={handlePrepChange} className="touch-input" />
                               </div>
                             </div>
+                            {prepForm.injectionSiteLimb === 'Other' && (
+                              <div className="form-group">
+                                <label>Describe (Other)</label>
+                                <input type="text" name="injectionSiteCustom" value={prepForm.injectionSiteCustom} onChange={handlePrepChange} className="touch-input" placeholder="e.g. Neck vein" />
+                              </div>
+                            )}
                             <div className="form-group">
                               <label>{t('nurse.nurse_notes')}</label>
                               <textarea name="nurseNotes" value={prepForm.nurseNotes} onChange={handlePrepChange} rows="2" className="touch-input" />

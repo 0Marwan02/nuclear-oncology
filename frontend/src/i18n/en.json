@@ -116,6 +116,8 @@
   "dashboard.total_patients": "Total Patients",
   "dashboard.today_visits": "Today's Visits",
   "dashboard.active_cases": "Active Cases",
+  "dashboard.my_cases_today": "My Cases Today",
+  "dashboard.hospital_cases_today": "Total Hospital Cases Today",
   "dashboard.recent_patients": "Recent Patients",
   "dashboard.quick_stats": "Quick Stats",
   "dashboard.workflow_summary": "Workflow Summary",

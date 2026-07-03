@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../i18n/index';
-import { apiFetch, getWorkflowAll, advanceWorkflow, exportReport, getReportVersions, listScanTemplates, API_ORIGIN } from '../utils/api';
+import { getWorkflowAll, advanceWorkflow, exportReport, getReportVersions, listScanTemplates, API_ORIGIN, getDailyStats } from '../utils/api';
 import { useQueueSocket } from '../utils/socket';
 import WorkflowProgress from '../components/WorkflowProgress';
 import ScanReportView from '../components/ScanReportView';
@@ -80,9 +80,9 @@ const ReportExport = ({ record, t }) => {
 const PhysicianDashboard = () => {
   const navigate = useNavigate();
   const { t, isRTL } = useTranslation();
-  const [pendingVisits, setPendingVisits] = useState([]);
   const [scannedRecords, setScannedRecords] = useState([]);
   const [completedToday, setCompletedToday] = useState([]);
+  const [dailyStats, setDailyStats] = useState({ myCasesToday: 0, hospitalCasesToday: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState(null);
@@ -90,6 +90,7 @@ const PhysicianDashboard = () => {
   const [reportForm, setReportForm] = useState({ physicianNotes: '', impression: '' });
   const [successMsg, setSuccessMsg] = useState('');
   const [dynamicTemplates, setDynamicTemplates] = useState([]);
+  const dismissedRef = useRef(new Set());
 
   useEffect(() => {
     listScanTemplates(true).then((rows) => setDynamicTemplates(rows || [])).catch(() => {});
@@ -97,14 +98,16 @@ const PhysicianDashboard = () => {
 
   const fetchQueues = useCallback(async () => {
     try {
-      const [pendingQ, scannedQ] = await Promise.all([
-        apiFetch('/workflow/nurse-queue').catch(() => []),
+      const [scannedQ, stats] = await Promise.all([
         getWorkflowAll({ status: 'Pending_Report' }).catch(() => []),
+        getDailyStats()
       ]);
-      pendingQ.sort((a, b) => new Date(b.visitDate || b.createdAt || 0) - new Date(a.visitDate || a.createdAt || 0));
       scannedQ.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      setPendingVisits(pendingQ);
-      setScannedRecords(scannedQ.map((r) => ({ ...r, _scanType: r.scanType })));
+      setScannedRecords(scannedQ
+        .filter(r => !dismissedRef.current.has(r.id))
+        .map((r) => ({ ...r, _scanType: r.scanType }))
+      );
+      setDailyStats(stats);
     } catch (err) {
       setError(err.message || t('physician.load_failed'));
     }
@@ -136,8 +139,13 @@ const PhysicianDashboard = () => {
           physicianNotes: reportForm.physicianNotes,
         },
       });
+      dismissedRef.current.add(record.id);
       setScannedRecords(prev => prev.filter(p => p.id !== record.id));
       setCompletedToday(prev => [...prev, record]);
+      setDailyStats(prev => ({ 
+        myCasesToday: prev.myCasesToday + 1, 
+        hospitalCasesToday: prev.hospitalCasesToday + 1 
+      }));
       setExpandedId(null);
       setReportForm({ physicianNotes: '', impression: '' });
       setSuccessMsg(t('physician.report_approved'));
@@ -190,40 +198,20 @@ const PhysicianDashboard = () => {
         </div>
       </div>
 
-      {/* Pending Doctor queue */}
-      {pendingVisits.length > 0 && (
-        <div className="queue-section" style={{ marginBottom: 24 }}>
-          <h3 className="queue-title"><ClipboardList size={20} /> Awaiting Assessment ({pendingVisits.length})</h3>
-          <div className="records-list">
-            {pendingVisits.map(visit => {
-              const patient = visit.patient || {};
-              return (
-                <div key={visit.id} className="record-card" style={{ cursor: 'default' }}>
-                  <div className="record-header">
-                    <div className="patient-info">
-                      <h3>{patient.name || '—'}</h3>
-                      <span className="text-muted">ID: {patient.nationalId} · {visit.category?.replace(/_/g, ' ')}</span>
-                    </div>
-                    <div className="record-meta">
-                      <span className="text-muted">{visit.visitDate ? format(new Date(visit.visitDate), 'dd MMM, HH:mm') : '—'}</span>
-                      <button className="btn-complete" style={{ padding: '6px 14px', fontSize: 13 }}
-                        onClick={() => navigate(`/patients/${patient.id}`)}>
-                        View Patient
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div className="queue-section">
         <h3 className="queue-title"><PenTool size={20} /> {t('physician.report_queue')} ({scannedRecords.length})</h3>
-        <div className="stats-row">
-          <div className="mini-stat"><CheckCircle size={20} /><div><span className="mini-stat-value">{completedToday.length}</span><span className="mini-stat-label">{t('physician.completed_today')}</span></div></div>
+        
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', marginTop: '1rem' }}>
+          <div style={{ flex: 1, backgroundColor: '#fff', padding: '1rem 1.5rem', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '4px solid #7c3aed' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{t('dashboard.my_cases_today')}</h4>
+            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#111827' }}>{dailyStats.myCasesToday}</div>
+          </div>
+          <div style={{ flex: 1, backgroundColor: '#fff', padding: '1rem 1.5rem', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '4px solid #10b981' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{t('dashboard.hospital_cases_today')}</h4>
+            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#111827' }}>{dailyStats.hospitalCasesToday}</div>
+          </div>
         </div>
+
         <div className="records-list">
           {scannedRecords.length === 0 ? (
             <div className="empty-state">

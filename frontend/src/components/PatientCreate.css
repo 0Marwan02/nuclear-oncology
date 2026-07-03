@@ -390,3 +390,6 @@
   font-size: 13px;
   color: #111827;
 }
+
+.field-error { display: block; color: #ef4444; font-size: 12px; margin-top: 3px; }
+.invalid-input { border-color: #ef4444 !important; box-shadow: 0 0 0 2px #fee2e2 !important; }

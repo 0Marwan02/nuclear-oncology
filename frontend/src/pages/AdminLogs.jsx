@@ -1,17 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../utils/api';
 import { useTranslation } from '../i18n/index';
-import { Activity, Clock } from 'lucide-react';
+import { Activity, Clock, X } from 'lucide-react';
 import { format } from 'date-fns';
 import './Admin.css';
 
 const PAGE_SIZE = 100;
+
+const parseJsonSafe = (str) => {
+  if (!str) return null;
+  try { return JSON.parse(str); } catch { return str; }
+};
+
+const LogDetailModal = ({ log, onClose }) => {
+  const newVals = parseJsonSafe(log.newValues);
+  const oldVals = parseJsonSafe(log.oldValues);
+  const renderObj = (obj) => {
+    if (!obj || typeof obj !== 'object') return <span className="mono">{String(obj ?? '—')}</span>;
+    return (
+      <table className="log-kv-table">
+        <tbody>
+          {Object.entries(obj).map(([k, v]) => (
+            <tr key={k}>
+              <td className="log-kv-key">{k}</td>
+              <td className="log-kv-val">{v === null ? <em>null</em> : String(v)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card fade-in log-detail-modal" onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ margin: 0 }}>{log.action} — {log.tableName}</h3>
+          <button className="btn text" onClick={onClose}><X size={18} /></button>
+        </div>
+        <p className="text-muted" style={{ margin: '0 0 12px', fontSize: 13 }}>
+          {format(new Date(log.timestamp), 'PPpp')} · {log.user?.name || '—'} ({log.user?.role})
+        </p>
+        {newVals && (
+          <div style={{ marginBottom: 16 }}>
+            <strong style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>New Values</strong>
+            {renderObj(newVals)}
+          </div>
+        )}
+        {oldVals && (
+          <div>
+            <strong style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>Previous Values</strong>
+            {renderObj(oldVals)}
+          </div>
+        )}
+        {!newVals && !oldVals && <p className="text-muted">No details available.</p>}
+      </div>
+    </div>
+  );
+};
 
 export default function AdminLogs() {
   const { t } = useTranslation();
   const [logs, setLogs] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [selectedLog, setSelectedLog] = useState(null);
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -79,10 +131,9 @@ export default function AdminLogs() {
                   <small className="mono">{(log.recordId || '').substring(0,8)}...</small>
                 </td>
                 <td>
-                  <details className="log-details">
-                    <summary>{t('common.view')}</summary>
-                    <pre>{log.newValues}</pre>
-                  </details>
+                  {(log.newValues || log.oldValues) ? (
+                    <button className="btn small" onClick={() => setSelectedLog(log)}>{t('common.view')}</button>
+                  ) : <span className="text-muted">—</span>}
                 </td>
               </tr>
             ))}
@@ -101,6 +152,7 @@ export default function AdminLogs() {
           </div>
         )}
       </div>
+      {selectedLog && <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />}
     </div>
   );
 }

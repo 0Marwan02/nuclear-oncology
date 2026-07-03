@@ -1,6 +1,6 @@
 # Nuclear Oncology System — Accounts & Demo Data Reference
 > Assiut University Hospital · Nuclear Medicine Department  
-> Last updated: 2026-06-10
+> Last updated: 2026-06-26
 
 ---
 
@@ -79,7 +79,9 @@ No reception step. No appointment model. No clinic files.
 | GAMMA        | Bone                                              | Tc-99m MDP          |
 | GAMMA        | Renal                                             | Tc-99m DTPA / MAG3  |
 | GAMMA        | Gastric                                           | Tc-99m Sulfur Colloid |
+| GAMMA        | Cardiac (MPI)                                     | Tc-99m Sestamibi / Tl-201 |
 | GAMMA        | Meckel's                                         | Tc-99m Pertechnetate |
+| OTHER        | Dynamic admin-defined sheets (e.g. Lung Perfusion) | Variable            |
 | OTHER        | (catch-all for unlisted)                          | Variable            |
 
 ---
@@ -89,17 +91,19 @@ No reception step. No appointment model. No clinic files.
 ### Admin (ADM-001)
 - Full user management (create / edit / toggle active / reset password)
 - Permission overrides per user
+- **Scan Template Builder** at `/admin/scan-templates` — create/activate dynamic scan sheets
 - Audit logs (who did what, when)
 - All patients and all scan records readable
 - Can enter any scan form and override data
 
 ### Doctor (DOC-001, DOC-002, DOC-003)
-- **New Scan** shortcuts: PET/CT · PSMA · Thyroid · Bone · Renal · Gastric
+- **New Scan** shortcuts: PET/CT · PSMA · Thyroid · Bone · Renal · Gastric · Cardiac (MPI) · Meckel's · **+ active dynamic templates** (e.g. Lung Perfusion)
 - **Awaiting Assessment** queue: visits at `Pending_Doctor` stage
 - **Report Queue**: scans at `Pending_Report` stage awaiting final sign-off
+- **Export PDF / Export Word** on completed scans (versioned report numbers `NM-{year}-{padded6}`)
 - Physician Assessment form (PhysicianAssessment component)
 - Patient list + profile + history comparison
-- Scan forms (7 types) with all clinical fields
+- Scan forms (8 hardcoded types + dynamic sheets) with all clinical fields
 
 ### Nurse (NRS-001, NRS-002)
 - **Prep Queue**: visits at `Pending_Nurse` stage
@@ -380,6 +384,59 @@ No reception step. No appointment model. No clinic files.
 
 ---
 
+### Cardiac (MPI) Scenarios (Tc-99m Sestamibi)
+
+#### 21. إبراهيم سليم — `Cardiac MPI Completed + Locked`
+- **National ID**: 29405123301201 · Male · Born 1964-05-12
+- **Diagnosis**: Suspected CAD — exertional chest pain
+- **Visit**: **Completed** (30 days ago) — Treadmill stress MPI. Vitals table 5 rows. scanMode `["rest","stress"]`. isLocked = true.
+- **Tests**: Cardiac form full workflow, report export, locked-record edit (doctor/admin only).
+
+#### 22. سها محمود — `Cardiac MPI Pending_Report + Multi Scan-Mode`
+- **National ID**: 29109284401202 · Female · Born 1969-09-28
+- **Diagnosis**: Atypical chest pain — rule out ischemia
+- **Visit**: **Pending_Report** — scanMode `["rest","stress","delayed"]`. In physician report queue.
+- **Tests**: Multi scan-mode chip group, female contraceptive fields, report queue.
+
+---
+
+### Dynamic Scan Scenarios (Admin Template)
+
+#### 23. حمدي عوض — `Lung Perfusion (Dynamic Template)`
+- **National ID**: 29006173501203 · Male · Born 1960-06-17
+- **Template**: `lung_perfusion` (seeded automatically by `seedDemo.js`)
+- **Visit**: **Pending_Nurse** — Suspected PE. Doctor section filled; awaiting nurse prep.
+- **Route**: `/scans/t/lung_perfusion`
+- **Tests**: Dynamic sheet engine, physician dashboard dynamic shortcut, workflow integration.
+
+---
+
+### Cardiac (MPI) Scenarios (Tc-99m Sestamibi)
+
+#### 21. إبراهيم سليم — `Cardiac MPI Completed + Locked`
+- **National ID**: 29405123301201 · Male · Born 1964-05-12
+- **Diagnosis**: Suspected CAD — exertional chest pain
+- **Visit**: **Completed** (30 days ago) — Treadmill stress MPI. Vitals table (5 rows). Reversible inferolateral defect. `isLocked: true`.
+- **Tests**: Cardiac sheet full workflow, vitals table JSON, multi scan-mode (rest+stress), locked-record edit (doctor/admin only), PDF/Word export.
+
+#### 22. سها محمود — `Cardiac MPI Pending_Report`
+- **National ID**: 29109284401202 · Female · Born 1969-09-28
+- **Diagnosis**: Atypical chest pain — rule out ischemia
+- **Visit**: **Pending_Report** — scanMode `["rest","stress","delayed"]`. Awaiting physician impression.
+- **Tests**: Cardiac multi scan-mode chip group, report queue, female contraceptive fields.
+
+---
+
+### Dynamic Scan Scenario (Lung Perfusion template)
+
+#### 23. حمدي عوض — `Dynamic Lung Perfusion — Pending_Nurse`
+- **National ID**: 29006173501203 · Male · Born 1960-06-17
+- **Template**: `lung_perfusion` (seeded automatically by `seedDemo.js`)
+- **Visit**: **Pending_Nurse** — Suspected PE. Doctor section filled; nurse prep pending.
+- **Tests**: Admin template engine, `/scans/t/lung_perfusion` renderer, physician dashboard dynamic shortcut.
+
+---
+
 ## Test Scenarios — Complete Checklist
 
 ### Authentication & Access
@@ -450,6 +507,7 @@ No reception step. No appointment model. No clinic files.
 | AD3 | Reset password | DOC-001 → reset | New password set, old one rejected |
 | AD4 | View audit log | /admin/logs | All scan creations, workflow advances listed |
 | AD5 | Permission override | /admin/permissions | Per-user route access override |
+| AD6 | Scan template builder | /admin/scan-templates → create Lung Perfusion fields | Admin creates + activates template |
 
 ---
 
@@ -468,10 +526,15 @@ No reception step. No appointment model. No clinic files.
 | S9 | CT/MRI toggle YES | ctMriYn ON → date + findings | طارق عبدالله |
 | S10 | Surgery Others field | surgeryHistory ON → fill Others | طارق عبدالله |
 | S11 | G-CSF notes textarea | gcsfGiven ON → notes field | كريم فؤاد |
-| S12 | Resus side note | petAim = resus → side note field | طارق عبدالله |
+| S12 | Resus side note | petAim = resus → resusSide field | طارق عبدالله |
 | S13 | Thyroid subtype | thyroid_scan / wbs_diagnostic / wbs_therapeutic | رانيا سامي |
 | S14 | Meckel's scan route | /scans/meckel | فريد يوسف |
 | S15 | PSMA PSA fields | totalPSA, freePSA, gleasonScore | وليد ناصر |
+| S16 | Cardiac MPI vitals table | /scans/cardiac — 5-row vitals grid + treadmill stress | إبراهيم سليم |
+| S17 | Cardiac multi scan-mode | Pending_Report with rest+stress+delayed JSON array | سها محمود |
+| S18 | Dynamic Lung Perfusion | /scans/t/lung_perfusion — admin template, Pending_Nurse | حمدي عوض |
+| S19 | Report export PDF/Word | Physician dashboard → Export on completed scan | إبراهيم سليم |
+| S20 | Locked scan edit | Nurse/tech blocked on isLocked; doctor/admin can edit | إبراهيم سليم |
 
 ---
 
@@ -482,37 +545,40 @@ After running `node seedDemo.js`:
 | Stage             | Count | Who sees it |
 |-------------------|-------|-------------|
 | Pending_Doctor    | 4     | Doctor dashboard (Awaiting Assessment) |
-| Pending_Nurse     | 4     | Nurse dashboard queue |
+| Pending_Nurse     | 5     | Nurse dashboard queue (+ dynamic Lung Perfusion) |
 | Pending_Technical | 5     | Technician dashboard queue |
-| Pending_Report    | 5     | Physician dashboard report queue |
-| Completed         | 8     | Patient history only |
+| Pending_Report    | 6     | Physician dashboard report queue (+ Cardiac MPI) |
+| Completed         | 9     | Patient history only (+ Cardiac MPI locked) |
 
 ---
 
 ## Scan Type Coverage Matrix
 
-| Patient             | PET/CT | PSMA | Thyroid | Bone | Renal | Gastric | Meckel |
-|---------------------|--------|------|---------|------|-------|---------|--------|
-| كريم فؤاد           | ×3     |      |         |      |       |         |        |
-| هالة سمير           | ×1     |      |         |      |       |         |        |
-| سمر عاطف            | ×1     |      |         |      |       |         |        |
-| ليلى فهمي           | ×1     |      |         |      |       |         |        |
-| مجدي رضا            | ×1     |      |         |      |       |         |        |
-| نادية إبراهيم       | ×1     |      |         |      |       |         |        |
-| طارق عبدالله        | ×1     |      |         |      |       |         |        |
-| وليد ناصر           |        | ×2   |         |      |       |         |        |
-| يوسف حسين           |        | ×2   |         |      |       |         |        |
-| سامي الشريف         |        | ×1   |         |      |       |         |        |
-| سلمى عادل           |        |      | ×1      |      |       |         |        |
-| أنس كمال            |        |      | ×1      |      |       |         |        |
-| رانيا سامي          |        |      | ×2      |      |       |         |        |
-| محمود صلاح          |        |      | ×1      |      |       |         |        |
-| حسن علي             |        |      |         | ×1   |       |         |        |
-| مروة جمال           |        |      |         | ×1   |       |         |        |
-| عادل منصور          |        |      |         |      | ×1    |         |        |
-| علاء الدين خليل     |        |      |         |      | ×1    |         |        |
-| دينا وهبة           |        |      |         |      |       | ×1      |        |
-| فريد يوسف           |        |      |         |      |       |         | ×1     |
+| Patient             | PET/CT | PSMA | Thyroid | Bone | Renal | Gastric | Meckel | Cardiac | Dynamic |
+|---------------------|--------|------|---------|------|-------|---------|--------|---------|---------|
+| كريم فؤاد           | ×3     |      |         |      |       |         |        |         |         |
+| هالة سمير           | ×1     |      |         |      |       |         |        |         |         |
+| سمر عاطف            | ×1     |      |         |      |       |         |        |         |         |
+| ليلى فهمي           | ×1     |      |         |      |       |         |        |         |         |
+| مجدي رضا            | ×1     |      |         |      |       |         |        |         |         |
+| نادية إبراهيم       | ×1     |      |         |      |       |         |        |         |         |
+| طارق عبدالله        | ×1     |      |         |      |       |         |        |         |         |
+| وليد ناصر           |        | ×2   |         |      |       |         |        |         |         |
+| يوسف حسين           |        | ×2   |         |      |       |         |        |         |         |
+| سامي الشريف         |        | ×1   |         |      |       |         |        |         |         |
+| سلمى عادل           |        |      | ×1      |      |       |         |        |         |         |
+| أنس كمال            |        |      | ×1      |      |       |         |        |         |         |
+| رانيا سامي          |        |      | ×2      |      |       |         |        |         |         |
+| محمود صلاح          |        |      | ×1      |      |       |         |        |         |         |
+| حسن علي             |        |      |         | ×1   |       |         |        |         |         |
+| مروة جمال           |        |      |         | ×1   |       |         |        |         |         |
+| عادل منصور          |        |      |         |      | ×1    |         |        |         |         |
+| علاء الدين خليل     |        |      |         |      | ×1    |         |        |         |         |
+| دينا وهبة           |        |      |         |      |       | ×1      |        |         |         |
+| فريد يوسف           |        |      |         |      |       |         | ×1     |         |         |
+| إبراهيم سليم        |        |      |         |      |       |         |        | ×1      |         |
+| سها محمود           |        |      |         |      |       |         |        | ×1      |         |
+| حمدي عوض            |        |      |         |      |       |         |        |         | ×1      |
 
 ---
 
@@ -530,6 +596,8 @@ Standard doses by scan type:
 - Bone scan: 20–25 mCi Tc-99m MDP
 - Renal: 5–10 mCi Tc-99m DTPA/MAG3
 - Gastric emptying: 1–2 mCi Tc-99m sulfur colloid
+- Cardiac MPI (Sestamibi): 20–30 mCi Tc-99m (stress + rest protocol)
+- Meckel's: 5–10 mCi Tc-99m pertechnetate
 
 ---
 
@@ -561,6 +629,19 @@ POST /api/scans/bone            { patientId, visitId, ...fields }
 POST /api/scans/renal           { patientId, visitId, ...fields }
 POST /api/scans/gastric         { patientId, visitId, ...fields }
 POST /api/scans/meckel          { patientId, visitId, ...fields }
+POST /api/scans/cardiac         { patientId, visitId, ...fields }
+GET  /api/scans/stats           → { total, byType: { petct, psma, …, cardiac, dynamic } }
+
+# Dynamic scans (WS5)
+GET  /api/dynamic-scans/templates?active=1
+POST /api/dynamic-scans/templates          (admin)
+POST /api/dynamic-scans/records            { patientId, templateId, data }
+GET  /api/dynamic-scans/records/:id
+PUT  /api/dynamic-scans/records/:id
+
+# Report export (WS3)
+POST /api/reports/:scanType/:scanId?format=pdf|docx
+GET  /api/reports/:scanType/:scanId        → version history
 
 # Scan history
 GET  /api/scans/history/all/:patientId
